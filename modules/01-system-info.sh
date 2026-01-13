@@ -116,9 +116,9 @@ scan() {
 
     # Virtualization kontrolü
     local virt_type
-    virt_type=$(systemd-detect-virt 2>/dev/null | tr -d '\n' || echo "none")
-    virt_type="${virt_type:-none}"
-    if [[ "$virt_type" != "none" && "$virt_type" != "nonenone" && -n "$virt_type" ]]; then
+    virt_type=$(systemd-detect-virt 2>/dev/null | tr -d '[:space:]')
+    [[ -z "$virt_type" ]] && virt_type="none"
+    if [[ "$virt_type" != "none" ]]; then
         echo -e "  ${DIM}Sanallaştırma:${NC}   $virt_type"
         alert_info "Sanal makine tespit edildi" \
             "Sanallaştırma türü: $virt_type" \
