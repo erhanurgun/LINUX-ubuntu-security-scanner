@@ -1,0 +1,58 @@
+{
+  "untrusted_extension": {
+    "match_pattern": "(güvenilmeyen|untrusted|bilinmeyen).*(eklenti|extension)",
+    "title": "Güvenilmeyen GNOME Eklentisi",
+    "description": "Güvenilir kaynaklardan olmayan GNOME eklentileri sistem güvenliğini tehlikeye atabilir.",
+    "impact": "Kötü amaçlı eklentiler sistem kaynaklarına erişebilir, tuş vuruşlarını kaydedebilir veya veri sızdırabilir.",
+    "steps": [
+      {
+        "instruction": "Eklentiyi devre dışı bırakın",
+        "command": "gnome-extensions disable EKLENTI_ADI@domain.com",
+        "note": "EKLENTI_ADI@domain.com yerine gerçek eklenti ID'sini yazın"
+      },
+      {
+        "instruction": "Eklentiyi kaldırın",
+        "command": "gnome-extensions uninstall EKLENTI_ADI@domain.com"
+      },
+      {
+        "instruction": "Güvenilir alternatif arayın",
+        "tip": "extensions.gnome.org adresinden resmi eklentileri tercih edin"
+      }
+    ],
+    "verification": {
+      "command": "gnome-extensions list --enabled",
+      "expected": "Eklenti listede görünmemeli"
+    }
+  },
+  "auto_start_extension": {
+    "match_pattern": "(otomatik|auto).*(başla|start).*(eklenti|extension)",
+    "title": "Otomatik Başlayan Eklenti",
+    "description": "Eklentinin otomatik başlatılması güvenlik riski oluşturabilir.",
+    "impact": "Kötü amaçlı eklentiler sistem açılışında otomatik çalışabilir.",
+    "steps": [
+      {
+        "instruction": "Eklenti ayarlarını kontrol edin",
+        "command": "gnome-extensions prefs EKLENTI_ADI@domain.com"
+      },
+      {
+        "instruction": "Gerekirse eklentiyi devre dışı bırakın",
+        "command": "gnome-extensions disable EKLENTI_ADI@domain.com"
+      }
+    ]
+  },
+  "outdated_extension": {
+    "match_pattern": "(eski|outdated|güncel.?değil).*(eklenti|extension)",
+    "title": "Güncel Olmayan GNOME Eklentisi",
+    "description": "Eski eklentiler güvenlik açıkları içerebilir.",
+    "steps": [
+      {
+        "instruction": "Eklentiyi güncelleyin",
+        "tip": "GNOME Extensions uygulamasından veya extensions.gnome.org adresinden güncelleyin"
+      },
+      {
+        "instruction": "Güncelleme yoksa devre dışı bırakmayı düşünün",
+        "command": "gnome-extensions disable EKLENTI_ADI@domain.com"
+      }
+    ]
+  }
+}

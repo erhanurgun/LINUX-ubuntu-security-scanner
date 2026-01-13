@@ -1,0 +1,124 @@
+{
+  "cis_benchmark_fail": {
+    "match_pattern": "(CIS|benchmark).*(başarısız|fail|uyumsuz)",
+    "title": "CIS Benchmark Uyumsuzluğu",
+    "description": "Sistem CIS güvenlik benchmark'ına uymuyor.",
+    "impact": "Endüstri standartlarına uyumsuzluk, güvenlik denetimleri sorun yaşanabilir.",
+    "steps": [
+      {
+        "instruction": "CIS benchmark raporunu inceleyin",
+        "command": "sudo lynis audit system"
+      },
+      {
+        "instruction": "Spesifik uyumsuzlukları düzeltin",
+        "tip": "Her bulgu için önerilen düzeltmeyi uygulayın"
+      }
+    ]
+  },
+  "audit_not_enabled": {
+    "match_pattern": "(audit|denetim).*(kapalı|disabled|etkin.?değil)",
+    "title": "Audit Sistemi Etkin Değil",
+    "description": "Linux audit sistemi çalışmıyor, güvenlik olayları kaydedilmiyor.",
+    "impact": "Güvenlik olayları takip edilemez, adli analiz yapılamaz.",
+    "steps": [
+      {
+        "instruction": "auditd servisini kurun",
+        "command": "sudo apt install auditd audispd-plugins"
+      },
+      {
+        "instruction": "Servisi başlatın",
+        "command": "sudo systemctl enable --now auditd"
+      },
+      {
+        "instruction": "Temel kuralları yapılandırın",
+        "command": "sudo auditctl -w /etc/passwd -p wa -k identity"
+      }
+    ],
+    "verification": {
+      "command": "systemctl is-active auditd",
+      "expected": "active"
+    }
+  },
+  "password_policy_weak": {
+    "match_pattern": "(şifre|password).*(politika|policy).*(zayıf|weak)",
+    "title": "Zayıf Şifre Politikası",
+    "description": "Sistem şifre politikası güvenlik standartlarını karşılamıyor.",
+    "steps": [
+      {
+        "instruction": "PAM pwquality modülünü yapılandırın",
+        "command": "sudo nano /etc/security/pwquality.conf"
+      },
+      {
+        "instruction": "Minimum gereksinimleri ayarlayın",
+        "note": "minlen=12, dcredit=-1, ucredit=-1, lcredit=-1, ocredit=-1"
+      },
+      {
+        "instruction": "Şifre yaşlandırma ayarlayın",
+        "command": "sudo chage -M 90 -m 7 -W 14 KULLANICI"
+      }
+    ]
+  },
+  "logging_insufficient": {
+    "match_pattern": "(log|günlük).*(yetersiz|insufficient|eksik)",
+    "title": "Yetersiz Loglama",
+    "description": "Sistem loglama yapılandırması yetersiz.",
+    "steps": [
+      {
+        "instruction": "rsyslog yapılandırmasını kontrol edin",
+        "command": "cat /etc/rsyslog.conf"
+      },
+      {
+        "instruction": "Önemli logları etkinleştirin",
+        "command": "sudo nano /etc/rsyslog.d/50-default.conf"
+      },
+      {
+        "instruction": "Log rotasyonunu yapılandırın",
+        "command": "sudo nano /etc/logrotate.conf"
+      }
+    ]
+  },
+  "selinux_disabled": {
+    "match_pattern": "(SELinux|AppArmor).*(kapalı|disabled)",
+    "title": "Zorunlu Erişim Kontrolü Kapalı",
+    "description": "SELinux veya AppArmor gibi MAC sistemi etkin değil.",
+    "impact": "Uygulamalar arası izolasyon zayıflar, exploit etkileri artabilir.",
+    "steps": [
+      {
+        "instruction": "AppArmor durumunu kontrol edin",
+        "command": "sudo aa-status"
+      },
+      {
+        "instruction": "AppArmor'u etkinleştirin",
+        "command": "sudo systemctl enable --now apparmor"
+      },
+      {
+        "instruction": "Profilleri yükleyin",
+        "command": "sudo aa-enforce /etc/apparmor.d/*"
+      }
+    ],
+    "verification": {
+      "command": "sudo aa-status | grep 'profiles are in enforce mode'",
+      "expected": "Enforce modda profiller görünmeli"
+    }
+  },
+  "backup_not_configured": {
+    "match_pattern": "(yedek|backup).*(yapılandırılmamış|not configured|yok)",
+    "title": "Yedekleme Yapılandırılmamış",
+    "description": "Sistem yedeklemesi yapılandırılmamış.",
+    "impact": "Veri kaybı durumunda kurtarma yapılamaz.",
+    "steps": [
+      {
+        "instruction": "Yedekleme stratejisi belirleyin",
+        "tip": "3-2-1 kuralı: 3 kopya, 2 farklı ortam, 1 offsite"
+      },
+      {
+        "instruction": "Timeshift ile sistem yedeği alın",
+        "command": "sudo apt install timeshift && sudo timeshift --create"
+      },
+      {
+        "instruction": "Otomatik yedekleme zamanlayın",
+        "command": "sudo timeshift --schedule"
+      }
+    ]
+  }
+}

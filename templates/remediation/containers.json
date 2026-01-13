@@ -1,0 +1,100 @@
+{
+  "privileged_container": {
+    "match_pattern": "(ayrıcalıklı|privileged).*(konteyner|container)",
+    "title": "Ayrıcalıklı Konteyner",
+    "description": "Konteyner privileged modda çalışıyor, bu güvenlik riski oluşturur.",
+    "impact": "Privileged konteynerler host sisteme tam erişim sağlayabilir.",
+    "steps": [
+      {
+        "instruction": "Konteyneri durdurun",
+        "command": "docker stop KONTEYNER_ADI"
+      },
+      {
+        "instruction": "Privileged olmadan yeniden başlatın",
+        "command": "docker run --rm -it IMAGE_ADI",
+        "note": "--privileged flag'ini kullanmayın"
+      },
+      {
+        "instruction": "Gerekli yetenekleri spesifik olarak ekleyin",
+        "command": "docker run --cap-add=SYS_PTRACE IMAGE_ADI",
+        "tip": "Sadece gerçekten gerekli yetenekleri ekleyin"
+      }
+    ],
+    "verification": {
+      "command": "docker inspect --format='{{.HostConfig.Privileged}}' KONTEYNER_ADI",
+      "expected": "false"
+    }
+  },
+  "root_container": {
+    "match_pattern": "(root).*(konteyner|container)",
+    "title": "Root Olarak Çalışan Konteyner",
+    "description": "Konteyner root kullanıcısı olarak çalışıyor.",
+    "impact": "Container escape durumunda host sisteme root erişimi sağlanabilir.",
+    "steps": [
+      {
+        "instruction": "Dockerfile'da USER direktifi ekleyin",
+        "command": "USER nonroot",
+        "note": "Dockerfile'ın sonuna ekleyin"
+      },
+      {
+        "instruction": "Çalışma zamanında kullanıcı belirtin",
+        "command": "docker run --user 1000:1000 IMAGE_ADI"
+      }
+    ]
+  },
+  "exposed_docker_socket": {
+    "match_pattern": "(docker.sock|docker socket).*(açık|exposed|mount)",
+    "title": "Docker Socket Mount Edilmiş",
+    "description": "Konteyner içinden Docker socket'e erişim var.",
+    "impact": "Container escape ve host sisteme tam erişim riski.",
+    "steps": [
+      {
+        "instruction": "Docker socket mount'unu kaldırın",
+        "note": "-v /var/run/docker.sock:/var/run/docker.sock mount'unu kullanmayın"
+      },
+      {
+        "instruction": "Docker API için alternatif kullanın",
+        "tip": "TCP üzerinden TLS ile güvenli Docker API kullanın"
+      }
+    ]
+  },
+  "outdated_image": {
+    "match_pattern": "(eski|outdated|güncel.?değil).*(imaj|image)",
+    "title": "Güncel Olmayan Konteyner İmajı",
+    "description": "Kullanılan konteyner imajı güncel değil, güvenlik açıkları içerebilir.",
+    "steps": [
+      {
+        "instruction": "İmajı güncelleyin",
+        "command": "docker pull IMAGE_ADI:latest"
+      },
+      {
+        "instruction": "Konteyneri yeniden oluşturun",
+        "command": "docker-compose up -d --force-recreate"
+      },
+      {
+        "instruction": "Eski imajları temizleyin",
+        "command": "docker image prune -a"
+      }
+    ]
+  },
+  "no_resource_limits": {
+    "match_pattern": "(kaynak|resource).*(limit|sınır)",
+    "title": "Kaynak Limiti Tanımlanmamış",
+    "description": "Konteyner için CPU/bellek limiti tanımlanmamış.",
+    "impact": "Konteyner tüm sistem kaynaklarını tüketebilir (DoS).",
+    "steps": [
+      {
+        "instruction": "Bellek limiti ekleyin",
+        "command": "docker run --memory=512m IMAGE_ADI"
+      },
+      {
+        "instruction": "CPU limiti ekleyin",
+        "command": "docker run --cpus=1 IMAGE_ADI"
+      },
+      {
+        "instruction": "Docker Compose'da tanımlayın",
+        "note": "deploy.resources.limits altında tanımlayın"
+      }
+    ]
+  }
+}
