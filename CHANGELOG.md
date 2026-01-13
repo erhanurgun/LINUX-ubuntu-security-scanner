@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.2] - 2026-01-13
+### Added
+- data/README.md, whitelist.conf.example, fim_whitelist.conf.example
+- templates/remediation/: gnome.json, malware.json, containers.json, compliance.json
+### Changed
+- Config tek kaynak prensibi: settings.json genişletildi, scanner.conf deprecated
+- settings.json'a exit_codes, gnome.trusted_extensions, webhook ayarları eklendi
+
 ## [0.3.0] - 2026-01-13
 ### Changed
 - **SRP Refactoring:** lib/reporting.sh 1055 satırdan 35 satırlık wrapper'a dönüştürüldü
@@ -8,6 +16,7 @@
   - `json.sh` - JSON rapor oluşturma
   - `html.sh` - HTML rapor oluşturma (TailwindCSS)
   - `management.sh` - Rapor yönetimi, listeleme, temizleme
+- KISS: modules/01-system-info.sh - gereksiz "nonenone" kontrolü temizlendi
 
 ## [0.2.2] - 2026-01-13
 ### Fixed

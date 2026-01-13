@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.2.2 - HTML Rapor Modülü
+# Security Scanner v0.3.2 - HTML Rapor Modülü
 # html.sh - TailwindCSS ile HTML rapor oluşturma
 #
 

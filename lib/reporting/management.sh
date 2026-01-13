@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.2.2 - Rapor Yönetimi Modülü
+# Security Scanner v0.3.2 - Rapor Yönetimi Modülü
 # management.sh - Rapor oluşturma, listeleme, temizleme ve bildirim
 #
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.3.0 - Raporlama Modülü (Wrapper)
+# Security Scanner v0.3.2 - Raporlama Modülü (Wrapper)
 # reporting.sh - Alt modülleri yükleyen ana raporlama dosyası
 #
 # Bu dosya SRP (Single Responsibility Principle) uyumu için

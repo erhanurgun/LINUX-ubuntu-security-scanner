@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.2.2 - Raporlama Yardımcı Fonksiyonları
+# Security Scanner v0.3.2 - Raporlama Yardımcı Fonksiyonları
 # helpers.sh - HTML escape, çeviri ve SVG ikonlar
 #
 

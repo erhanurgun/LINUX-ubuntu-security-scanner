@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.3.0
+# Security Scanner v0.3.2
 # Ubuntu Sistem Guvenlik Tarayicisi
 # https://github.com/erhanurgun
 #
@@ -10,7 +10,7 @@
 set -uo pipefail
 
 # === VERSIYON ===
-readonly SCANNER_VERSION="0.3.0"
+readonly SCANNER_VERSION="0.3.2"
 
 # === PORTABLE PATH DETECTION ===
 detect_scanner_paths() {

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.2.2 - JSON Rapor Modülü
+# Security Scanner v0.3.2 - JSON Rapor Modülü
 # json.sh - JSON formatında rapor oluşturma
 #
 
