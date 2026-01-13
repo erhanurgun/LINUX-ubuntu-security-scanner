@@ -1,7 +1,7 @@
 {
   "privileged_container": {
-    "match_pattern": "(ayrıcalıklı|privileged).*(konteyner|container)",
-    "title": "Ayrıcalıklı Konteyner",
+    "match_pattern": "Privileged.*container|ayrıcalıklı.*konteyner|privileged.*true",
+    "title": "Privileged Container",
     "description": "Konteyner privileged modda çalışıyor, bu güvenlik riski oluşturur.",
     "impact": "Privileged konteynerler host sisteme tam erişim sağlayabilir.",
     "steps": [
@@ -26,8 +26,8 @@
     }
   },
   "root_container": {
-    "match_pattern": "(root).*(konteyner|container)",
-    "title": "Root Olarak Çalışan Konteyner",
+    "match_pattern": "Container.*root.*çalışıyor|root.*olarak.*çalışıyor",
+    "title": "Root Olarak Çalışan Container",
     "description": "Konteyner root kullanıcısı olarak çalışıyor.",
     "impact": "Container escape durumunda host sisteme root erişimi sağlanabilir.",
     "steps": [
@@ -43,7 +43,7 @@
     ]
   },
   "exposed_docker_socket": {
-    "match_pattern": "(docker.sock|docker socket).*(açık|exposed|mount)",
+    "match_pattern": "Docker.*socket.*mount|docker\\.sock.*mount|Docker.*socket.*edilmiş",
     "title": "Docker Socket Mount Edilmiş",
     "description": "Konteyner içinden Docker socket'e erişim var.",
     "impact": "Container escape ve host sisteme tam erişim riski.",
@@ -58,22 +58,237 @@
       }
     ]
   },
-  "outdated_image": {
-    "match_pattern": "(eski|outdated|güncel.?değil).*(imaj|image)",
-    "title": "Güncel Olmayan Konteyner İmajı",
-    "description": "Kullanılan konteyner imajı güncel değil, güvenlik açıkları içerebilir.",
+  "docker_root": {
+    "match_pattern": "Docker.*root.*olarak.*çalışıyor",
+    "title": "Docker Root Olarak Çalışıyor",
+    "description": "Docker daemon root kullanıcısı olarak çalışıyor.",
+    "impact": "Container escape durumunda host'ta root erişimi.",
     "steps": [
       {
-        "instruction": "İmajı güncelleyin",
-        "command": "docker pull IMAGE_ADI:latest"
+        "instruction": "Rootless Docker kullanmayı düşünün",
+        "command": "dockerd-rootless-setuptool.sh install"
       },
       {
-        "instruction": "Konteyneri yeniden oluşturun",
-        "command": "docker-compose up -d --force-recreate"
+        "instruction": "Veya kullanıcı namespace remapping etkinleştirin",
+        "command": "sudo nano /etc/docker/daemon.json"
       },
       {
-        "instruction": "Eski imajları temizleyin",
-        "command": "docker image prune -a"
+        "instruction": "userns-remap ekleyin",
+        "command": "{\n  \"userns-remap\": \"default\"\n}"
+      }
+    ]
+  },
+  "docker_live_restore": {
+    "match_pattern": "Docker.*live.*restore.*devre.*dışı",
+    "title": "Docker Live Restore Devre Dışı",
+    "description": "Docker daemon yeniden başlatıldığında konteynerler duracak.",
+    "impact": "Docker güncellemelerinde kesinti yaşanır.",
+    "steps": [
+      {
+        "instruction": "daemon.json'u düzenleyin",
+        "command": "sudo nano /etc/docker/daemon.json"
+      },
+      {
+        "instruction": "live-restore'u etkinleştirin",
+        "command": "{\n  \"live-restore\": true\n}"
+      },
+      {
+        "instruction": "Docker'ı yeniden başlatın",
+        "command": "sudo systemctl restart docker"
+      }
+    ]
+  },
+  "host_network": {
+    "match_pattern": "Host.*network.*modu",
+    "title": "Host Network Modu",
+    "description": "Konteyner host'un ağ namespace'ini kullanıyor.",
+    "impact": "Ağ izolasyonu yok, host portlarına doğrudan erişim.",
+    "steps": [
+      {
+        "instruction": "Konteyneri bridge network ile yeniden başlatın",
+        "command": "docker run --network bridge IMAGE_ADI"
+      },
+      {
+        "instruction": "Sadece gerekli portları yayınlayın",
+        "command": "docker run -p 8080:80 IMAGE_ADI"
+      }
+    ]
+  },
+  "host_pid": {
+    "match_pattern": "Host.*PID.*namespace",
+    "title": "Host PID Namespace",
+    "description": "Konteyner host'un PID namespace'ini paylaşıyor.",
+    "impact": "Konteyner host'taki tüm süreçleri görebilir ve etkileşebilir.",
+    "steps": [
+      {
+        "instruction": "--pid=host flag'ini kaldırın",
+        "command": "docker run IMAGE_ADI",
+        "note": "PID izolasyonu varsayılan olarak etkin"
+      }
+    ]
+  },
+  "dangerous_volume": {
+    "match_pattern": "Tehlikeli.*volume.*mount|sensitive.*mount",
+    "title": "Tehlikeli Volume Mount",
+    "description": "Konteyner hassas host dizinlerini mount etmiş.",
+    "impact": "Host sistem dosyalarına erişim, veri sızıntısı veya değişiklik riski.",
+    "steps": [
+      {
+        "instruction": "Mount edilen dizinleri kontrol edin",
+        "command": "docker inspect --format='{{.Mounts}}' KONTEYNER_ADI"
+      },
+      {
+        "instruction": "Sadece gerekli dizinleri mount edin",
+        "tip": "/etc, /var, /root gibi hassas dizinleri mount etmeyin"
+      },
+      {
+        "instruction": "Read-only mount kullanın",
+        "command": "docker run -v /data:/data:ro IMAGE_ADI"
+      }
+    ]
+  },
+  "dangerous_capability": {
+    "match_pattern": "Tehlikeli.*capability|tehlikeli.*yetenek",
+    "title": "Tehlikeli Capability",
+    "description": "Konteyner tehlikeli Linux capability'lere sahip.",
+    "impact": "Ayrıcalık yükseltme ve container escape riski.",
+    "steps": [
+      {
+        "instruction": "Tüm capability'leri kaldırın",
+        "command": "docker run --cap-drop=ALL IMAGE_ADI"
+      },
+      {
+        "instruction": "Sadece gerekli olanları ekleyin",
+        "command": "docker run --cap-drop=ALL --cap-add=NET_BIND_SERVICE IMAGE_ADI"
+      }
+    ]
+  },
+  "seccomp_disabled": {
+    "match_pattern": "Seccomp.*devre.*dışı",
+    "title": "Seccomp Devre Dışı",
+    "description": "Konteyner için seccomp profili devre dışı bırakılmış.",
+    "impact": "Sistem çağrıları kısıtlanmamış, kernel exploit riski artar.",
+    "steps": [
+      {
+        "instruction": "--security-opt seccomp=unconfined'ı kaldırın",
+        "note": "Varsayılan seccomp profili kullanılacak"
+      },
+      {
+        "instruction": "Özel profil gerekiyorsa güvenli bir tane kullanın",
+        "command": "docker run --security-opt seccomp=custom-profile.json IMAGE_ADI"
+      }
+    ]
+  },
+  "apparmor_disabled": {
+    "match_pattern": "AppArmor.*devre.*dışı.*container|container.*AppArmor.*devre",
+    "title": "Container AppArmor Devre Dışı",
+    "description": "Konteyner için AppArmor profili devre dışı bırakılmış.",
+    "impact": "Zorunlu erişim kontrolü yok, izolasyon zayıflar.",
+    "steps": [
+      {
+        "instruction": "--security-opt apparmor=unconfined'ı kaldırın",
+        "note": "Varsayılan AppArmor profili kullanılacak"
+      },
+      {
+        "instruction": "AppArmor'un etkin olduğunu doğrulayın",
+        "command": "sudo aa-status"
+      }
+    ]
+  },
+  "dangling_images": {
+    "match_pattern": "dangling.*image|kullanılmayan.*image",
+    "title": "Dangling Image Var",
+    "description": "Kullanılmayan Docker image'ları disk alanı kaplıyor.",
+    "steps": [
+      {
+        "instruction": "Dangling image'ları listeleyin",
+        "command": "docker images -f 'dangling=true'"
+      },
+      {
+        "instruction": "Dangling image'ları temizleyin",
+        "command": "docker image prune -f"
+      },
+      {
+        "instruction": "Tüm kullanılmayan image'ları temizleyin",
+        "command": "docker image prune -a",
+        "tip": "Dikkat: Çalışmayan tüm image'lar silinir"
+      }
+    ]
+  },
+  "latest_tag": {
+    "match_pattern": "latest.*tag|:latest.*kullan",
+    "title": ":latest Tag Kullanılıyor",
+    "description": "Image'lar :latest tag'i ile çalıştırılıyor.",
+    "impact": "Versiyon takibi zorlaşır, beklenmeyen değişiklikler olabilir.",
+    "steps": [
+      {
+        "instruction": "Spesifik versiyon tag'i kullanın",
+        "command": "docker pull nginx:1.24",
+        "tip": ":latest yerine belirli versiyon kullanın"
+      },
+      {
+        "instruction": "Image digest kullanın",
+        "command": "docker pull nginx@sha256:...",
+        "note": "En güvenli yöntem"
+      }
+    ]
+  },
+  "docker_tls": {
+    "match_pattern": "Docker.*TLS.*doğrulama|Docker.*TLS.*yapılandırılmamış",
+    "title": "Docker TLS Doğrulaması Yapılandırılmamış",
+    "description": "Docker API TLS ile korunmuyor.",
+    "impact": "Man-in-the-middle saldırıları, yetkisiz erişim riski.",
+    "steps": [
+      {
+        "instruction": "TLS sertifikaları oluşturun",
+        "command": "openssl genrsa -out ca-key.pem 4096"
+      },
+      {
+        "instruction": "daemon.json'da TLS'i yapılandırın",
+        "command": "sudo nano /etc/docker/daemon.json"
+      },
+      {
+        "instruction": "TLS ayarlarını ekleyin",
+        "command": "{\n  \"tlsverify\": true,\n  \"tlscacert\": \"/etc/docker/ca.pem\",\n  \"tlscert\": \"/etc/docker/server-cert.pem\",\n  \"tlskey\": \"/etc/docker/server-key.pem\"\n}"
+      }
+    ]
+  },
+  "docker_proxy": {
+    "match_pattern": "Docker.*userland.*proxy.*aktif",
+    "title": "Docker Userland Proxy Aktif",
+    "description": "Docker userland-proxy kullanıyor, performans ve güvenlik etkisi var.",
+    "steps": [
+      {
+        "instruction": "daemon.json'u düzenleyin",
+        "command": "sudo nano /etc/docker/daemon.json"
+      },
+      {
+        "instruction": "userland-proxy'yi devre dışı bırakın",
+        "command": "{\n  \"userland-proxy\": false\n}"
+      },
+      {
+        "instruction": "Docker'ı yeniden başlatın",
+        "command": "sudo systemctl restart docker"
+      }
+    ]
+  },
+  "no_memory_limit": {
+    "match_pattern": "memory.*limit.*yok|memory.*limit'siz|container.*memory.*limit",
+    "title": "Container Memory Limit Yok",
+    "description": "Konteyner için bellek limiti tanımlanmamış.",
+    "impact": "Konteyner tüm sistem belleğini tüketebilir (DoS).",
+    "steps": [
+      {
+        "instruction": "Memory limit ile başlatın",
+        "command": "docker run --memory=512m IMAGE_ADI"
+      },
+      {
+        "instruction": "Memory swap'i de sınırlayın",
+        "command": "docker run --memory=512m --memory-swap=1g IMAGE_ADI"
+      },
+      {
+        "instruction": "Docker Compose'da tanımlayın",
+        "note": "deploy.resources.limits.memory: 512M"
       }
     ]
   },

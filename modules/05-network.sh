@@ -130,7 +130,8 @@ scan() {
     # iptables
     if ! $fw_active && command_exists iptables; then
         local ipt_rules
-        ipt_rules=$(sudo iptables -L 2>/dev/null | grep -v "^Chain\|^target\|^$" | wc -l || echo "0")
+        ipt_rules=$(sudo iptables -L 2>/dev/null | grep -v "^Chain\|^target\|^$" | wc -l 2>/dev/null | tr -d '[:space:]')
+        ipt_rules="${ipt_rules:-0}"
 
         if [[ $ipt_rules -gt 0 ]]; then
             alert_ok "iptables kuralları mevcut ($ipt_rules kural)"
@@ -141,7 +142,8 @@ scan() {
     # nftables
     if ! $fw_active && command_exists nft; then
         local nft_rules
-        nft_rules=$(sudo nft list ruleset 2>/dev/null | wc -l || echo "0")
+        nft_rules=$(sudo nft list ruleset 2>/dev/null | wc -l 2>/dev/null | tr -d '[:space:]')
+        nft_rules="${nft_rules:-0}"
 
         if [[ $nft_rules -gt 5 ]]; then
             alert_ok "nftables kuralları mevcut"

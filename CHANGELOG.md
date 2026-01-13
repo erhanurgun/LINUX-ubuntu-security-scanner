@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.3.5] - 2026-01-13
+### Fixed
+- Alert-remediation tam eşleştirme: "Son 24 saatte X başarısız giriş" artık çözüm adımları gösteriyor
+### Added
+- templates/remediation/security-updates.json: 10 entry (güvenlik güncellemeleri modülü)
+- templates/remediation/kernel-security.json: 13 entry (kernel güvenliği modülü)
+- authentication.json: +14 entry (başarısız giriş, SSH ayarları, şifre politikası)
+- filesystem.json: +13 entry (mount seçenekleri, SUID, SSH dizin izinleri)
+- permissions.json: +13 entry (umask, world-writable, PATH güvenliği)
+### Changed
+- helpers.sh: security-updates ve kernel-security kategorileri ayrı JSON dosyalarına yönlendirildi
+
+## [0.3.4] - 2026-01-13
+### Fixed
+- Remediation sistemi tam düzeltme: "Çözüm Adımları" artık doğru çalışıyor
+### Added
+- helpers.sh: 6 yeni kategori eşleştirmesi (malware, gnome, containers, compliance, fim, system)
+- templates/remediation/fim.json: 7 yeni entry (FIM modülü için)
+- templates/remediation/system.json: 7 yeni entry (system/kernel modülü için)
+- templates/remediation/network.json: +10 entry (toplam 15)
+- templates/remediation/compliance.json: +20 CIS entry (toplam 26)
+- templates/remediation/services.json: +12 entry (toplam 17)
+- templates/remediation/containers.json: +13 entry (toplam 18)
+- templates/remediation/malware.json: +13 entry (toplam 17)
+### Changed
+- Tüm remediation pattern'ları Türkçe karakter desteği ile güncellendi (ş, ç, ğ, ü, ö, ı)
+
+## [0.3.3] - 2026-01-13
+### Fixed
+- CRLF line endings lib/reporting/ dosyalarinda (Windows satir sonlari LF'ye donusturuldu)
+- modules/05-network.sh: wc -l ciktisi normalizasyonu (iptables/nftables kural sayisi)
+
 ## [0.3.2] - 2026-01-13
 ### Added
 - data/README.md, whitelist.conf.example, fim_whitelist.conf.example

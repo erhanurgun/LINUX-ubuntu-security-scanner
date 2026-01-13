@@ -1,90 +1,73 @@
 {
   "mysql_no_password": {
     "title": "MySQL Root Şifresi Ayarlanmamış",
-    "match_pattern": "MySQL.*root.*password|MySQL.*şifre|MySQL.*authentication",
+    "match_pattern": "MySQL.*root.*şifre|MySQL.*root.*password|MySQL.*şifresi.*yok",
     "severity": "critical",
     "impact": "Saldırganlar yerel erişimle tüm veritabanlarını okuyabilir/değiştirebilir",
     "steps": [
       {
-        "order": 1,
         "instruction": "MySQL güvenlik sihirbazını çalıştırın",
         "command": "sudo mysql_secure_installation",
-        "explanation": "Bu interaktif araç MySQL'i güvenli hale getirmenize yardımcı olur"
+        "note": "Bu interaktif araç MySQL'i güvenli hale getirmenize yardımcı olur"
       },
       {
-        "order": 2,
         "instruction": "Güçlü bir root şifresi belirleyin",
-        "command": null,
         "tip": "En az 12 karakter, büyük/küçük harf, rakam ve sembol kullanın"
       },
       {
-        "order": 3,
         "instruction": "Anonim kullanıcıları kaldırın",
-        "command": null,
         "note": "Sorulduğunda 'Y' yanıtı verin"
       },
       {
-        "order": 4,
         "instruction": "Uzaktan root girişini engelleyin",
-        "command": null,
         "note": "Sorulduğunda 'Y' yanıtı verin"
       }
     ],
     "verification": {
       "command": "sudo mysql -u root -p -e 'SELECT 1'",
       "expected": "Şifre isteyecek ve doğru şifreyle başarılı olacak"
-    },
-    "references": [
-      "https://dev.mysql.com/doc/refman/8.0/en/mysql-secure-installation.html"
-    ]
+    }
   },
   "mysql_open_port": {
-    "title": "MySQL Tüm Arayüzlerde Açık",
-    "match_pattern": "MySQL.*3306.*açık|MySQL.*tüm.*arayüz",
+    "title": "MySQL Tüm Arayüzlerde Dinliyor",
+    "match_pattern": "MySQL.*tüm.*arayüz|MySQL.*dinliyor|MySQL.*3306.*açık",
     "severity": "high",
     "impact": "Uzaktan veritabanına erişim mümkün olabilir",
     "steps": [
       {
-        "order": 1,
         "instruction": "MySQL yapılandırma dosyasını düzenleyin",
         "command": "sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf"
       },
       {
-        "order": 2,
         "instruction": "bind-address değerini localhost olarak ayarlayın",
-        "command": "bind-address = 127.0.0.1",
-        "note": "Bu satırı bulun veya ekleyin"
+        "command": "bind-address = 127.0.0.1"
       },
       {
-        "order": 3,
         "instruction": "MySQL servisini yeniden başlatın",
         "command": "sudo systemctl restart mysql"
       }
     ],
     "verification": {
       "command": "ss -tlnp | grep 3306",
-      "expected": "127.0.0.1:3306 göstermelidir"
+      "expected": "127.0.0.1:3306 gösterilmeli"
     }
   },
   "redis_no_auth": {
     "title": "Redis Authentication Yapılandırılmamış",
-    "match_pattern": "Redis.*auth|Redis.*password|Redis.*şifre",
+    "match_pattern": "Redis.*şifre.*koruması.*yok|Redis.*auth|Redis.*password",
     "severity": "high",
     "impact": "Yetkisiz erişim ile veri okunabilir veya değiştirilebilir",
     "steps": [
       {
-        "order": 1,
         "instruction": "Redis yapılandırma dosyasını düzenleyin",
         "command": "sudo nano /etc/redis/redis.conf"
       },
       {
-        "order": 2,
-        "instruction": "requirepass direktifini bulun ve ayarlayın",
+        "instruction": "requirepass direktifini ayarlayın",
         "command": "requirepass GUCLU_SIFRENIZ",
-        "tip": "GUCLU_SIFRENIZ yerine güçlü bir şifre yazın"
+        "tip": "Güçlü bir şifre yazın"
       },
       {
-        "order": 3,
         "instruction": "Redis servisini yeniden başlatın",
         "command": "sudo systemctl restart redis"
       }
@@ -96,59 +79,305 @@
   },
   "telnet_enabled": {
     "title": "Telnet Servisi Aktif",
-    "match_pattern": "telnet.*aktif|telnet.*açık|telnet.*enabled",
+    "match_pattern": "Telnet.*açık|telnet.*aktif|telnet.*enabled",
     "severity": "critical",
     "impact": "Telnet şifreleri düz metin olarak iletir, dinlenebilir",
     "steps": [
       {
-        "order": 1,
         "instruction": "Telnet servisini durdurun",
         "command": "sudo systemctl stop telnet.socket"
       },
       {
-        "order": 2,
         "instruction": "Telnet servisini devre dışı bırakın",
         "command": "sudo systemctl disable telnet.socket"
       },
       {
-        "order": 3,
         "instruction": "Bunun yerine SSH kullanın",
-        "command": "sudo apt install openssh-server",
-        "note": "SSH güvenli uzaktan erişim sağlar"
+        "command": "sudo apt install openssh-server"
       }
     ],
     "verification": {
       "command": "systemctl is-active telnet.socket",
-      "expected": "inactive dönmelidir"
+      "expected": "inactive"
     }
   },
   "ftp_enabled": {
     "title": "FTP Servisi Aktif",
-    "match_pattern": "ftp.*aktif|ftp.*açık|vsftpd",
+    "match_pattern": "FTP.*açık|ftp.*aktif|vsftpd",
     "severity": "high",
     "impact": "FTP şifreleri şifrelenmeden iletir",
     "steps": [
       {
-        "order": 1,
-        "instruction": "SFTP veya SCP kullanmayı düşünün (SSH üzerinden)",
-        "command": null,
-        "note": "Daha güvenli alternatifler"
+        "instruction": "SFTP veya SCP kullanmayı düşünün",
+        "note": "SSH üzerinden çalışan güvenli alternatifler"
       },
       {
-        "order": 2,
         "instruction": "FTP zorunluysa TLS/SSL etkinleştirin",
         "command": "sudo nano /etc/vsftpd.conf"
       },
       {
-        "order": 3,
         "instruction": "SSL ayarlarını ekleyin",
-        "command": "ssl_enable=YES\nforce_local_logins_ssl=YES\nforce_local_data_ssl=YES",
-        "note": "Bu satırları yapılandırmaya ekleyin"
+        "command": "ssl_enable=YES\nforce_local_logins_ssl=YES\nforce_local_data_ssl=YES"
       }
     ],
     "verification": {
-      "command": "cat /etc/vsftpd.conf | grep ssl_enable",
-      "expected": "ssl_enable=YES göstermelidir"
+      "command": "grep ssl_enable /etc/vsftpd.conf",
+      "expected": "ssl_enable=YES"
     }
+  },
+  "risky_service": {
+    "title": "Riskli Servis Çalışıyor",
+    "match_pattern": "Riskli.*servis.*çalışıyor|riskli.*servis",
+    "severity": "high",
+    "impact": "Güvenlik açığı bulunan veya gereksiz servis çalışıyor",
+    "steps": [
+      {
+        "instruction": "Çalışan servisleri listeleyin",
+        "command": "systemctl list-units --type=service --state=running"
+      },
+      {
+        "instruction": "Servisi durdurun",
+        "command": "sudo systemctl stop SERVIS_ADI"
+      },
+      {
+        "instruction": "Servisi devre dışı bırakın",
+        "command": "sudo systemctl disable SERVIS_ADI"
+      },
+      {
+        "instruction": "Gerekli değilse paketi kaldırın",
+        "command": "sudo apt remove PAKET_ADI"
+      }
+    ]
+  },
+  "vnc_running": {
+    "title": "VNC Server Çalışıyor",
+    "match_pattern": "VNC.*server.*çalışıyor|VNC.*çalışıyor",
+    "severity": "medium",
+    "impact": "Uzaktan masaüstü erişimi açık, brute force riski",
+    "steps": [
+      {
+        "instruction": "VNC servisini kontrol edin",
+        "command": "systemctl list-units | grep -i vnc"
+      },
+      {
+        "instruction": "Gerekli değilse durdurun",
+        "command": "sudo systemctl stop vncserver@:1"
+      },
+      {
+        "instruction": "Güçlü şifre kullanın",
+        "command": "vncpasswd",
+        "tip": "En az 8 karakter, karmaşık şifre"
+      },
+      {
+        "instruction": "Firewall ile erişimi kısıtlayın",
+        "command": "sudo ufw allow from 192.168.1.0/24 to any port 5900"
+      }
+    ]
+  },
+  "gnome_rdp": {
+    "title": "GNOME Remote Desktop Aktif",
+    "match_pattern": "GNOME.*Remote.*Desktop.*aktif",
+    "severity": "medium",
+    "impact": "Uzaktan masaüstü erişimi açık",
+    "steps": [
+      {
+        "instruction": "GNOME Remote Desktop durumunu kontrol edin",
+        "command": "systemctl status gnome-remote-desktop"
+      },
+      {
+        "instruction": "Gerekli değilse devre dışı bırakın",
+        "command": "systemctl --user disable gnome-remote-desktop"
+      },
+      {
+        "instruction": "Veya güvenlik ayarlarını yapılandırın",
+        "note": "Ayarlar > Paylaşım > Uzak Masaüstü"
+      }
+    ]
+  },
+  "xrdp_running": {
+    "title": "XRDP Server Çalışıyor",
+    "match_pattern": "XRDP.*server.*çalışıyor|XRDP.*RDP.*server",
+    "severity": "medium",
+    "impact": "RDP protokolü ile uzaktan erişim açık",
+    "steps": [
+      {
+        "instruction": "XRDP servisini kontrol edin",
+        "command": "systemctl status xrdp"
+      },
+      {
+        "instruction": "Gerekli değilse durdurun",
+        "command": "sudo systemctl stop xrdp && sudo systemctl disable xrdp"
+      },
+      {
+        "instruction": "Firewall ile erişimi kısıtlayın",
+        "command": "sudo ufw allow from 192.168.1.0/24 to any port 3389"
+      }
+    ]
+  },
+  "postgresql_trust": {
+    "title": "PostgreSQL Trust Authentication",
+    "match_pattern": "PostgreSQL.*trust.*authentication|PostgreSQL.*trust",
+    "severity": "high",
+    "impact": "Şifresiz veritabanı erişimi mümkün",
+    "steps": [
+      {
+        "instruction": "pg_hba.conf dosyasını düzenleyin",
+        "command": "sudo nano /etc/postgresql/*/main/pg_hba.conf"
+      },
+      {
+        "instruction": "trust yerine md5 veya scram-sha-256 kullanın",
+        "command": "local all all scram-sha-256",
+        "note": "trust satırlarını değiştirin"
+      },
+      {
+        "instruction": "PostgreSQL'i yeniden başlatın",
+        "command": "sudo systemctl restart postgresql"
+      }
+    ]
+  },
+  "mongodb_no_auth": {
+    "title": "MongoDB Authentication Devre Dışı",
+    "match_pattern": "MongoDB.*authentication.*devre.*dışı",
+    "severity": "high",
+    "impact": "Yetkisiz veritabanı erişimi mümkün",
+    "steps": [
+      {
+        "instruction": "Admin kullanıcı oluşturun",
+        "command": "mongosh --eval 'use admin; db.createUser({user: \"admin\", pwd: \"SIFRE\", roles: [\"root\"]})'"
+      },
+      {
+        "instruction": "mongod.conf dosyasını düzenleyin",
+        "command": "sudo nano /etc/mongod.conf"
+      },
+      {
+        "instruction": "Authorization'ı etkinleştirin",
+        "command": "security:\n  authorization: enabled"
+      },
+      {
+        "instruction": "MongoDB'yi yeniden başlatın",
+        "command": "sudo systemctl restart mongod"
+      }
+    ]
+  },
+  "suspicious_cron": {
+    "title": "Şüpheli Cron Job",
+    "match_pattern": "şüpheli.*cron.*job|Şüpheli.*cron|uzaktan.*script",
+    "severity": "medium",
+    "impact": "Potansiyel backdoor veya zararlı otomasyon",
+    "steps": [
+      {
+        "instruction": "Tüm cron job'ları listeleyin",
+        "command": "for user in $(cut -f1 -d: /etc/passwd); do echo \"=== $user ===\"; crontab -u $user -l 2>/dev/null; done"
+      },
+      {
+        "instruction": "Sistem cron dizinlerini kontrol edin",
+        "command": "ls -la /etc/cron.* /var/spool/cron/crontabs/"
+      },
+      {
+        "instruction": "Şüpheli entry'leri kaldırın",
+        "command": "sudo crontab -e -u KULLANICI"
+      }
+    ]
+  },
+  "cron_perms_weak": {
+    "title": "Cron Dosya İzinleri Gevşek",
+    "match_pattern": "cron.*izinleri.*gevşek|cron.*permission",
+    "severity": "medium",
+    "impact": "Yetkisiz cron job ekleme riski",
+    "steps": [
+      {
+        "instruction": "Cron dizin izinlerini düzeltin",
+        "command": "sudo chmod 700 /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly"
+      },
+      {
+        "instruction": "crontab dosya izinlerini düzeltin",
+        "command": "sudo chmod 600 /etc/crontab"
+      }
+    ]
+  },
+  "suspicious_service": {
+    "title": "Şüpheli Servis Tespit Edildi",
+    "match_pattern": "şüpheli.*servis.*tespit|Şüpheli.*servis.*tespit",
+    "severity": "critical",
+    "impact": "Potansiyel backdoor veya zararlı yazılım",
+    "steps": [
+      {
+        "instruction": "Servisi inceleyin",
+        "command": "systemctl status SERVIS_ADI"
+      },
+      {
+        "instruction": "Servisin dosyalarını bulun",
+        "command": "systemctl cat SERVIS_ADI"
+      },
+      {
+        "instruction": "Şüpheli ise servisi durdurun",
+        "command": "sudo systemctl stop SERVIS_ADI && sudo systemctl disable SERVIS_ADI"
+      },
+      {
+        "instruction": "Virüs taraması yapın",
+        "command": "sudo clamscan -r /"
+      }
+    ]
+  },
+  "apache_signature": {
+    "title": "Apache ServerSignature Açık",
+    "match_pattern": "Apache.*ServerSignature.*açık",
+    "severity": "low",
+    "impact": "Sunucu versiyonu bilgisi ifşa ediliyor",
+    "steps": [
+      {
+        "instruction": "Apache yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/apache2/conf-available/security.conf"
+      },
+      {
+        "instruction": "ServerSignature'ı kapatın",
+        "command": "ServerSignature Off\nServerTokens Prod"
+      },
+      {
+        "instruction": "Apache'yi yeniden başlatın",
+        "command": "sudo systemctl restart apache2"
+      }
+    ]
+  },
+  "nginx_tokens": {
+    "title": "Nginx server_tokens Açık",
+    "match_pattern": "Nginx.*server_tokens.*açık",
+    "severity": "low",
+    "impact": "Sunucu versiyonu bilgisi ifşa ediliyor",
+    "steps": [
+      {
+        "instruction": "Nginx yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/nginx/nginx.conf"
+      },
+      {
+        "instruction": "server_tokens'ı kapatın",
+        "command": "server_tokens off;",
+        "note": "http bloğuna ekleyin"
+      },
+      {
+        "instruction": "Nginx'i yeniden başlatın",
+        "command": "sudo systemctl restart nginx"
+      }
+    ]
+  },
+  "php_expose": {
+    "title": "PHP expose_php Açık",
+    "match_pattern": "PHP.*expose_php.*açık",
+    "severity": "low",
+    "impact": "PHP versiyonu HTTP header'larında ifşa ediliyor",
+    "steps": [
+      {
+        "instruction": "php.ini dosyasını düzenleyin",
+        "command": "sudo nano /etc/php/*/apache2/php.ini"
+      },
+      {
+        "instruction": "expose_php'yi kapatın",
+        "command": "expose_php = Off"
+      },
+      {
+        "instruction": "Web sunucusunu yeniden başlatın",
+        "command": "sudo systemctl restart apache2"
+      }
+    ]
   }
 }

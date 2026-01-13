@@ -1,7 +1,7 @@
 # Ubuntu Security Scanner - Geliştirme Kuralları
 
 ## Proje Bilgisi
-- **Proje:** Ubuntu Security Scanner v0.3.2
+- **Proje:** Ubuntu Security Scanner v0.3.5
 - **Dil:** Bash (shell scripting)
 - **Amaç:** Ubuntu sistemler için güvenlik tarama aracı
 
@@ -24,6 +24,9 @@ Versiyon değiştiğinde şu dosyalar güncellenmelidir:
 3. `CHANGELOG.md` - Değişiklik kaydı
 
 ### Değişiklik Kaydı
+- **v0.3.5** - Alert-remediation tam eşleştirme (63 yeni entry, 2 yeni JSON dosyası)
+- **v0.3.4** - Remediation sistemi tam düzeltme (~79 yeni entry, 6 kategori eşleştirmesi)
+- **v0.3.3** - Bug fix: CRLF line endings (lib/reporting/), wc -l output normalization (05-network.sh)
 - **v0.3.2** - Final refactoring: Config birleştirme, eksik dosyalar, dokümantasyon
 - **v0.3.0** - SRP modül bölme (lib/reporting/ dizini), reporting.sh wrapper olarak güncellendi
 - **v0.2.2** - Türkçe karakter düzeltmeleri, DRY helper fonksiyonlar

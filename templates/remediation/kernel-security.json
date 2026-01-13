@@ -1,0 +1,300 @@
+{
+  "aslr_partial": {
+    "match_pattern": "ASLR.*kısmen.*aktif",
+    "title": "ASLR Kısmen Aktif",
+    "severity": "medium",
+    "impact": "Address Space Layout Randomization tam koruma sağlamıyor.",
+    "steps": [
+      {
+        "instruction": "Mevcut ASLR durumunu kontrol edin",
+        "command": "cat /proc/sys/kernel/randomize_va_space"
+      },
+      {
+        "instruction": "ASLR'yi tam etkinleştirin",
+        "command": "echo 2 | sudo tee /proc/sys/kernel/randomize_va_space"
+      },
+      {
+        "instruction": "Kalıcı yapmak için sysctl.conf'a ekleyin",
+        "command": "echo 'kernel.randomize_va_space = 2' | sudo tee -a /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Değişikliği uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "cat /proc/sys/kernel/randomize_va_space",
+      "expected": "2"
+    }
+  },
+  "aslr_disabled": {
+    "match_pattern": "ASLR.*devre.*dışı",
+    "title": "ASLR Devre Dışı",
+    "severity": "critical",
+    "impact": "Bellek koruma yok, exploit riski çok yüksek.",
+    "steps": [
+      {
+        "instruction": "ASLR'yi tam etkinleştirin",
+        "command": "echo 2 | sudo tee /proc/sys/kernel/randomize_va_space"
+      },
+      {
+        "instruction": "Kalıcı yapmak için sysctl.conf'a ekleyin",
+        "command": "echo 'kernel.randomize_va_space = 2' | sudo tee -a /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Değişikliği uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "cat /proc/sys/kernel/randomize_va_space",
+      "expected": "2"
+    }
+  },
+  "kptr_restrict": {
+    "match_pattern": "Kernel.*pointer.*açık|kptr_restrict.*0",
+    "title": "Kernel Pointer'ları Açık",
+    "severity": "medium",
+    "impact": "Kernel adres bilgisi saldırganlara yardımcı olabilir.",
+    "steps": [
+      {
+        "instruction": "Kernel pointer'ları gizleyin",
+        "command": "echo 1 | sudo tee /proc/sys/kernel/kptr_restrict"
+      },
+      {
+        "instruction": "Kalıcı yapın",
+        "command": "echo 'kernel.kptr_restrict = 1' | sudo tee -a /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Değişikliği uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "cat /proc/sys/kernel/kptr_restrict",
+      "expected": "1 veya 2"
+    }
+  },
+  "dmesg_public": {
+    "match_pattern": "dmesg.*herkese.*açık|dmesg_restrict.*0",
+    "title": "Dmesg Herkese Açık",
+    "severity": "low",
+    "impact": "Kernel log bilgileri tüm kullanıcılara açık.",
+    "steps": [
+      {
+        "instruction": "dmesg erişimini kısıtlayın",
+        "command": "echo 1 | sudo tee /proc/sys/kernel/dmesg_restrict"
+      },
+      {
+        "instruction": "Kalıcı yapın",
+        "command": "echo 'kernel.dmesg_restrict = 1' | sudo tee -a /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Değişikliği uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "cat /proc/sys/kernel/dmesg_restrict",
+      "expected": "1"
+    }
+  },
+  "lockdown_disabled": {
+    "match_pattern": "Kernel.*lockdown.*devre.*dışı",
+    "title": "Kernel Lockdown Devre Dışı",
+    "severity": "medium",
+    "impact": "Kernel güvenlik kısıtlamaları uygulanmıyor.",
+    "steps": [
+      {
+        "instruction": "Kernel lockdown durumunu kontrol edin",
+        "command": "cat /sys/kernel/security/lockdown"
+      },
+      {
+        "instruction": "GRUB yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/default/grub"
+      },
+      {
+        "instruction": "Kernel parametresi ekleyin",
+        "command": "GRUB_CMDLINE_LINUX=\"lockdown=integrity\"",
+        "note": "veya lockdown=confidentiality (daha kısıtlayıcı)"
+      },
+      {
+        "instruction": "GRUB'u güncelleyin",
+        "command": "sudo update-grub"
+      }
+    ],
+    "verification": {
+      "command": "cat /sys/kernel/security/lockdown",
+      "expected": "[integrity] veya [confidentiality]"
+    }
+  },
+  "nx_bit": {
+    "match_pattern": "NX.*bit.*desteklenmiyor|NX.*bit.*devre.*dışı",
+    "title": "NX Bit Devre Dışı veya Desteklenmiyor",
+    "severity": "high",
+    "impact": "No-Execute koruması yok, kod enjeksiyonu riski yüksek.",
+    "steps": [
+      {
+        "instruction": "CPU NX desteğini kontrol edin",
+        "command": "grep -E 'nx|execute-disable' /proc/cpuinfo"
+      },
+      {
+        "instruction": "BIOS/UEFI'de NX/XD'yi etkinleştirin",
+        "note": "Bu özellik BIOS/UEFI seviyesinde etkinleştirilmelidir"
+      }
+    ]
+  },
+  "unsigned_modules": {
+    "match_pattern": "İmzasız.*kernel.*modülleri|unsigned.*module",
+    "title": "İmzasız Kernel Modülleri Yüklenebilir",
+    "severity": "medium",
+    "impact": "Kötü amaçlı kernel modülleri yüklenebilir.",
+    "steps": [
+      {
+        "instruction": "Secure Boot etkinleştirin",
+        "note": "UEFI BIOS'ta Secure Boot'u etkinleştirin"
+      },
+      {
+        "instruction": "Kernel module imza kontrolünü etkinleştirin",
+        "command": "CONFIG_MODULE_SIG_FORCE=y",
+        "note": "Kernel yeniden derlenmesi gerekebilir"
+      }
+    ]
+  },
+  "suspicious_module": {
+    "match_pattern": "Şüpheli.*kernel.*modülü",
+    "title": "Şüpheli Kernel Modülü",
+    "severity": "critical",
+    "impact": "Potansiyel rootkit veya zararlı modül.",
+    "steps": [
+      {
+        "instruction": "Yüklü modülleri listeleyin",
+        "command": "lsmod"
+      },
+      {
+        "instruction": "Modül bilgisini kontrol edin",
+        "command": "modinfo MODUL_ADI"
+      },
+      {
+        "instruction": "Şüpheli modülü kaldırın",
+        "command": "sudo rmmod MODUL_ADI"
+      },
+      {
+        "instruction": "Modülü kara listeye ekleyin",
+        "command": "echo 'blacklist MODUL_ADI' | sudo tee -a /etc/modprobe.d/blacklist.conf"
+      },
+      {
+        "instruction": "Rootkit taraması yapın",
+        "command": "sudo rkhunter --check"
+      }
+    ]
+  },
+  "oot_modules": {
+    "match_pattern": "harici.*kernel.*modülü|out-of-tree.*kernel",
+    "title": "Harici Kernel Modülleri Yüklü",
+    "severity": "low",
+    "impact": "Dış kaynaklı modüller güvenlik riski oluşturabilir.",
+    "steps": [
+      {
+        "instruction": "Out-of-tree modülleri listeleyin",
+        "command": "find /lib/modules/$(uname -r) -type f -name '*.ko*' -exec modinfo {} \\; 2>/dev/null | grep -B1 'intree:.*N'"
+      },
+      {
+        "instruction": "Her modülün kaynağını doğrulayın",
+        "note": "Bilinen ve güvenilir kaynaklardan olduğundan emin olun"
+      }
+    ]
+  },
+  "core_dump": {
+    "match_pattern": "Core.*dump.*dosyaları.*oluşturulabilir",
+    "title": "Core Dump Dosyaları Oluşturulabilir",
+    "severity": "low",
+    "impact": "Bellek dökümleri hassas veri içerebilir.",
+    "steps": [
+      {
+        "instruction": "Core dump'ları devre dışı bırakın",
+        "command": "echo '* hard core 0' | sudo tee -a /etc/security/limits.conf"
+      },
+      {
+        "instruction": "sysctl ile de kısıtlayın",
+        "command": "echo 'fs.suid_dumpable = 0' | sudo tee -a /etc/sysctl.conf && sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "ulimit -c",
+      "expected": "0"
+    }
+  },
+  "sysrq_enabled": {
+    "match_pattern": "Magic.*SysRq.*tamamen.*aktif|sysrq.*aktif",
+    "title": "Magic SysRq Tamamen Aktif",
+    "severity": "low",
+    "impact": "Fiziksel erişimi olan kişi sistemi kontrol edebilir.",
+    "steps": [
+      {
+        "instruction": "SysRq'yu kısıtlayın",
+        "command": "echo 0 | sudo tee /proc/sys/kernel/sysrq"
+      },
+      {
+        "instruction": "Kalıcı yapın",
+        "command": "echo 'kernel.sysrq = 0' | sudo tee -a /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Değişikliği uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "cat /proc/sys/kernel/sysrq",
+      "expected": "0"
+    }
+  },
+  "ptrace_unrestricted": {
+    "match_pattern": "ptrace.*kısıtlaması.*yok",
+    "title": "Ptrace Kısıtlaması Yok",
+    "severity": "medium",
+    "impact": "Süreçler arası casusluk mümkün.",
+    "steps": [
+      {
+        "instruction": "Ptrace scope'u kısıtlayın",
+        "command": "echo 1 | sudo tee /proc/sys/kernel/yama/ptrace_scope"
+      },
+      {
+        "instruction": "Kalıcı yapın",
+        "command": "echo 'kernel.yama.ptrace_scope = 1' | sudo tee -a /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Değişikliği uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "cat /proc/sys/kernel/yama/ptrace_scope",
+      "expected": "1 veya daha yüksek"
+    }
+  },
+  "bpf_jit": {
+    "match_pattern": "BPF.*JIT.*hardening.*devre.*dışı",
+    "title": "BPF JIT Hardening Devre Dışı",
+    "severity": "low",
+    "impact": "BPF exploit'lerine karşı koruma zayıf.",
+    "steps": [
+      {
+        "instruction": "BPF JIT hardening'i etkinleştirin",
+        "command": "echo 2 | sudo tee /proc/sys/net/core/bpf_jit_harden"
+      },
+      {
+        "instruction": "Kalıcı yapın",
+        "command": "echo 'net.core.bpf_jit_harden = 2' | sudo tee -a /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Değişikliği uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "cat /proc/sys/net/core/bpf_jit_harden",
+      "expected": "2"
+    }
+  }
+}

@@ -155,5 +155,250 @@
       "command": "sysctl net.ipv4.conf.all.accept_redirects",
       "expected": "0 değeri"
     }
+  },
+  "ssh_open_all": {
+    "title": "SSH Tüm Arayüzlerde Açık",
+    "match_pattern": "SSH.*22.*tüm.*arayüz|SSH.*22.*açık",
+    "severity": "medium",
+    "impact": "SSH servisi tüm ağ arayüzlerinden erişilebilir",
+    "steps": [
+      {
+        "instruction": "SSH yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "instruction": "ListenAddress ile belirli IP'ye kısıtlayın",
+        "command": "ListenAddress 192.168.1.100",
+        "note": "Kendi IP adresinizi yazın"
+      },
+      {
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      },
+      {
+        "instruction": "Firewall ile ek koruma sağlayın",
+        "command": "sudo ufw allow from 192.168.1.0/24 to any port 22"
+      }
+    ],
+    "verification": {
+      "command": "ss -tlnp | grep :22",
+      "expected": "Belirli IP adresi gösterilmeli"
+    }
+  },
+  "postgresql_open": {
+    "title": "PostgreSQL Tüm Arayüzlerde Açık",
+    "match_pattern": "PostgreSQL.*5432.*tüm.*arayüz|PostgreSQL.*5432.*açık",
+    "severity": "high",
+    "impact": "Veritabanı dışarıdan erişilebilir, veri sızıntısı riski",
+    "steps": [
+      {
+        "instruction": "PostgreSQL yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/postgresql/*/main/postgresql.conf"
+      },
+      {
+        "instruction": "listen_addresses değerini localhost yapın",
+        "command": "listen_addresses = 'localhost'"
+      },
+      {
+        "instruction": "pg_hba.conf dosyasını da kontrol edin",
+        "command": "sudo nano /etc/postgresql/*/main/pg_hba.conf",
+        "note": "Uzaktan erişim kurallarını kısıtlayın"
+      },
+      {
+        "instruction": "PostgreSQL'i yeniden başlatın",
+        "command": "sudo systemctl restart postgresql"
+      }
+    ],
+    "verification": {
+      "command": "ss -tlnp | grep :5432",
+      "expected": "127.0.0.1:5432 gösterilmeli"
+    }
+  },
+  "redis_open": {
+    "title": "Redis Tüm Arayüzlerde Açık",
+    "match_pattern": "Redis.*6379.*tüm.*arayüz|Redis.*6379.*açık",
+    "severity": "critical",
+    "impact": "Şifresiz Redis uzaktan erişilebilir, veri kaybı/sızıntısı riski",
+    "steps": [
+      {
+        "instruction": "Redis yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/redis/redis.conf"
+      },
+      {
+        "instruction": "bind değerini localhost yapın",
+        "command": "bind 127.0.0.1 ::1"
+      },
+      {
+        "instruction": "Şifre koruması ekleyin",
+        "command": "requirepass GUCLU_SIFRE",
+        "tip": "Güçlü bir şifre belirleyin"
+      },
+      {
+        "instruction": "Redis'i yeniden başlatın",
+        "command": "sudo systemctl restart redis"
+      }
+    ],
+    "verification": {
+      "command": "ss -tlnp | grep :6379",
+      "expected": "127.0.0.1:6379 gösterilmeli"
+    }
+  },
+  "mongodb_open": {
+    "title": "MongoDB Tüm Arayüzlerde Açık",
+    "match_pattern": "MongoDB.*27017.*tüm.*arayüz|MongoDB.*27017.*açık",
+    "severity": "high",
+    "impact": "Veritabanı dışarıdan erişilebilir, veri sızıntısı riski",
+    "steps": [
+      {
+        "instruction": "MongoDB yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/mongod.conf"
+      },
+      {
+        "instruction": "bindIp değerini localhost yapın",
+        "command": "net:\n  bindIp: 127.0.0.1"
+      },
+      {
+        "instruction": "Authentication'ı etkinleştirin",
+        "command": "security:\n  authorization: enabled"
+      },
+      {
+        "instruction": "MongoDB'yi yeniden başlatın",
+        "command": "sudo systemctl restart mongod"
+      }
+    ],
+    "verification": {
+      "command": "ss -tlnp | grep :27017",
+      "expected": "127.0.0.1:27017 gösterilmeli"
+    }
+  },
+  "source_routing": {
+    "title": "Source Routing Kabul Ediliyor",
+    "match_pattern": "source.*routing.*kabul|Source.*routing.*kabul",
+    "severity": "medium",
+    "impact": "IP spoofing saldırılarına açık",
+    "steps": [
+      {
+        "instruction": "Sysctl yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Source routing'i devre dışı bırakın",
+        "command": "net.ipv4.conf.all.accept_source_route = 0\nnet.ipv4.conf.default.accept_source_route = 0"
+      },
+      {
+        "instruction": "Değişiklikleri uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "sysctl net.ipv4.conf.all.accept_source_route",
+      "expected": "0 değeri"
+    }
+  },
+  "syn_cookies_disabled": {
+    "title": "SYN Cookies Devre Dışı",
+    "match_pattern": "SYN.*cookies.*devre.*dışı",
+    "severity": "medium",
+    "impact": "SYN flood saldırılarına karşı savunmasız",
+    "steps": [
+      {
+        "instruction": "Sysctl yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/sysctl.conf"
+      },
+      {
+        "instruction": "SYN cookies'i etkinleştirin",
+        "command": "net.ipv4.tcp_syncookies = 1"
+      },
+      {
+        "instruction": "Değişiklikleri uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "sysctl net.ipv4.tcp_syncookies",
+      "expected": "1 değeri"
+    }
+  },
+  "rp_filter_disabled": {
+    "title": "Reverse Path Filtering Devre Dışı",
+    "match_pattern": "Reverse.*path.*filtering.*devre.*dışı|rp_filter.*devre",
+    "severity": "low",
+    "impact": "IP spoofing saldırılarına daha açık",
+    "steps": [
+      {
+        "instruction": "Sysctl yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/sysctl.conf"
+      },
+      {
+        "instruction": "Reverse path filtering'i etkinleştirin",
+        "command": "net.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.default.rp_filter = 1"
+      },
+      {
+        "instruction": "Değişiklikleri uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "sysctl net.ipv4.conf.all.rp_filter",
+      "expected": "1 değeri"
+    }
+  },
+  "suspicious_connection": {
+    "title": "Şüpheli Port Bağlantısı",
+    "match_pattern": "şüpheli.*port.*bağlantı|Şüpheli.*port.*bağlantı|suspicious.*port",
+    "severity": "high",
+    "impact": "Backdoor veya zararlı yazılım iletişimi olabilir",
+    "steps": [
+      {
+        "instruction": "Şüpheli bağlantıları listeleyin",
+        "command": "ss -tnp | grep -E ':4444|:5555|:1337|:31337'"
+      },
+      {
+        "instruction": "Bağlantı yapan süreci tespit edin",
+        "command": "sudo lsof -i :PORT_NUMARASI"
+      },
+      {
+        "instruction": "Sürecin dosya yolunu kontrol edin",
+        "command": "ls -la /proc/PID/exe"
+      },
+      {
+        "instruction": "Şüpheli süreci sonlandırın",
+        "command": "sudo kill -9 PID",
+        "tip": "Önce sürecin ne olduğunu doğrulayın"
+      },
+      {
+        "instruction": "Firewall ile portu engelleyin",
+        "command": "sudo ufw deny out PORT_NUMARASI"
+      }
+    ]
+  },
+  "no_firewall": {
+    "title": "Aktif Firewall Bulunamadı",
+    "match_pattern": "Aktif.*firewall.*bulunamadı|firewall.*bulunamadı|firewall.*yok",
+    "severity": "high",
+    "impact": "Sistem güvenlik duvarı koruması olmadan çalışıyor",
+    "steps": [
+      {
+        "instruction": "UFW firewall'u kurun",
+        "command": "sudo apt install ufw"
+      },
+      {
+        "instruction": "SSH'a izin verin (uzaktan bağlanıyorsanız)",
+        "command": "sudo ufw allow ssh",
+        "note": "Bu adımı atlamayın!"
+      },
+      {
+        "instruction": "Varsayılan politikaları ayarlayın",
+        "command": "sudo ufw default deny incoming && sudo ufw default allow outgoing"
+      },
+      {
+        "instruction": "UFW'yi etkinleştirin",
+        "command": "sudo ufw enable"
+      }
+    ],
+    "verification": {
+      "command": "sudo ufw status",
+      "expected": "Status: active"
+    }
   }
 }

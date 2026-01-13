@@ -1,0 +1,162 @@
+{
+  "baseline_not_found": {
+    "match_pattern": "FIM.*baseline.*bulunamadı|baseline.*yok",
+    "title": "FIM Baseline Bulunamadı",
+    "description": "Dosya bütünlük izleme için baseline dosyası oluşturulmamış.",
+    "impact": "Dosya değişiklikleri takip edilemez, güvenlik ihlalleri tespit edilemez.",
+    "steps": [
+      {
+        "instruction": "FIM baseline oluşturun",
+        "command": "./bin/security-scanner --fim-init",
+        "note": "Bu işlem kritik sistem dosyalarının hash'lerini kaydeder"
+      },
+      {
+        "instruction": "Baseline dosyasını kontrol edin",
+        "command": "ls -la ~/.security-scanner/fim/"
+      }
+    ],
+    "verification": {
+      "command": "ls ~/.security-scanner/fim/baseline.json",
+      "expected": "Baseline dosyası mevcut olmalı"
+    }
+  },
+  "baseline_old": {
+    "match_pattern": "Baseline.*gün.*eski|baseline.*old|baseline.*outdated",
+    "title": "FIM Baseline Eski",
+    "description": "FIM baseline dosyası uzun süredir güncellenmemiş.",
+    "impact": "Meşru değişiklikler yanlış pozitif uyarılara neden olabilir.",
+    "steps": [
+      {
+        "instruction": "Mevcut değişiklikleri inceleyin",
+        "command": "./bin/security-scanner --fim-check"
+      },
+      {
+        "instruction": "Değişiklikler meşru ise baseline'ı güncelleyin",
+        "command": "./bin/security-scanner --fim-update",
+        "tip": "Güncelleme öncesi değişiklikleri mutlaka doğrulayın"
+      }
+    ]
+  },
+  "file_deleted": {
+    "match_pattern": "Dosya.*silindi|file.*deleted|dosya.*kaldırıldı",
+    "title": "Kritik Dosya Silindi",
+    "description": "İzlenen kritik bir dosya sistemden silinmiş.",
+    "impact": "Sistem bütünlüğü tehlikede olabilir, kötü amaçlı silme söz konusu olabilir.",
+    "steps": [
+      {
+        "instruction": "Silinen dosyayı tespit edin",
+        "note": "FIM raporundaki dosya yolunu not alın"
+      },
+      {
+        "instruction": "Dosyanın neden silindiğini araştırın",
+        "command": "sudo grep -r 'DOSYA_ADI' /var/log/auth.log /var/log/syslog",
+        "note": "DOSYA_ADI yerine silinen dosyanın adını yazın"
+      },
+      {
+        "instruction": "Gerekirse dosyayı yedekten geri yükleyin",
+        "command": "sudo cp /backup/DOSYA_YOLU /DOSYA_YOLU"
+      },
+      {
+        "instruction": "Silme meşru ise baseline'ı güncelleyin",
+        "command": "./bin/security-scanner --fim-update"
+      }
+    ]
+  },
+  "file_new": {
+    "match_pattern": "Yeni.*dosya.*tespit|new.*file.*detected|yeni.*dosya",
+    "title": "Yeni Dosya Tespit Edildi",
+    "description": "İzlenen dizinde beklenmeyen yeni bir dosya oluşturulmuş.",
+    "impact": "Yetkisiz dosya oluşturma, backdoor veya malware göstergesi olabilir.",
+    "steps": [
+      {
+        "instruction": "Dosyayı inceleyin",
+        "command": "file DOSYA_YOLU && ls -la DOSYA_YOLU"
+      },
+      {
+        "instruction": "Dosya sahibini kontrol edin",
+        "command": "stat DOSYA_YOLU"
+      },
+      {
+        "instruction": "Dosya içeriğini kontrol edin",
+        "command": "strings DOSYA_YOLU | head -50",
+        "tip": "Şüpheli içerik varsa virüs taraması yapın"
+      },
+      {
+        "instruction": "Dosya meşru ise baseline'ı güncelleyin",
+        "command": "./bin/security-scanner --fim-update"
+      }
+    ]
+  },
+  "file_content_changed": {
+    "match_pattern": "Dosya.*içeriği.*değişti|içerik.*değişti|content.*changed|hash.*changed",
+    "title": "Dosya İçeriği Değişti",
+    "description": "İzlenen bir dosyanın içeriği (hash değeri) değişmiş.",
+    "impact": "Yetkisiz değişiklik, backdoor enjeksiyonu veya sistem bozulması olabilir.",
+    "steps": [
+      {
+        "instruction": "Değişikliği kim yaptı kontrol edin",
+        "command": "sudo grep 'DOSYA_ADI' /var/log/auth.log | tail -20"
+      },
+      {
+        "instruction": "Dosya değişiklik geçmişini inceleyin",
+        "command": "stat DOSYA_YOLU"
+      },
+      {
+        "instruction": "Paket yöneticisi ile doğrulayın (sistem dosyası ise)",
+        "command": "dpkg -V $(dpkg -S DOSYA_YOLU 2>/dev/null | cut -d: -f1)",
+        "note": "Paket tarafından yönetilen dosyalar için"
+      },
+      {
+        "instruction": "Değişiklik meşru ise baseline'ı güncelleyin",
+        "command": "./bin/security-scanner --fim-update"
+      }
+    ]
+  },
+  "file_permissions_changed": {
+    "match_pattern": "Dosya.*izinleri.*değişti|izin.*değişti|permission.*changed",
+    "title": "Dosya İzinleri Değişti",
+    "description": "İzlenen bir dosyanın erişim izinleri değiştirilmiş.",
+    "impact": "Yetkisiz erişim veya ayrıcalık yükseltme riski.",
+    "steps": [
+      {
+        "instruction": "Mevcut izinleri kontrol edin",
+        "command": "ls -la DOSYA_YOLU"
+      },
+      {
+        "instruction": "İzin değişikliğini kim yaptı araştırın",
+        "command": "sudo ausearch -f DOSYA_YOLU -i 2>/dev/null | tail -20",
+        "note": "auditd kurulu ise çalışır"
+      },
+      {
+        "instruction": "Doğru izinleri geri yükleyin (gerekirse)",
+        "command": "sudo chmod IZIN DOSYA_YOLU",
+        "tip": "Örnek: sudo chmod 644 /etc/passwd"
+      },
+      {
+        "instruction": "Değişiklik meşru ise baseline'ı güncelleyin",
+        "command": "./bin/security-scanner --fim-update"
+      }
+    ]
+  },
+  "file_ownership_changed": {
+    "match_pattern": "Dosya.*sahipliği.*değişti|sahiplik.*değişti|owner.*changed",
+    "title": "Dosya Sahipliği Değişti",
+    "description": "İzlenen bir dosyanın sahibi veya grubu değiştirilmiş.",
+    "impact": "Yetkisiz erişim veya ayrıcalık yükseltme riski.",
+    "steps": [
+      {
+        "instruction": "Mevcut sahipliği kontrol edin",
+        "command": "ls -la DOSYA_YOLU"
+      },
+      {
+        "instruction": "Doğru sahipliği geri yükleyin (gerekirse)",
+        "command": "sudo chown KULLANICI:GRUP DOSYA_YOLU",
+        "tip": "Örnek: sudo chown root:root /etc/passwd"
+      },
+      {
+        "instruction": "Değişiklik meşru ise baseline'ı güncelleyin",
+        "command": "./bin/security-scanner --fim-update"
+      }
+    ]
+  }
+}

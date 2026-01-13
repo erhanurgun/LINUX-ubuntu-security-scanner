@@ -210,5 +210,214 @@
       "command": "stat -c '%a' /tmp /var/tmp",
       "expected": "1777 olmalıdır (sonunda t harfi)"
     }
+  },
+  "tmp_noexec": {
+    "match_pattern": "/tmp.*noexec.*olmadan|/tmp.*mount.*noexec",
+    "title": "/tmp Noexec Olmadan Mount Edilmiş",
+    "severity": "medium",
+    "impact": "Geçici dizinde çalıştırılabilir dosyalar çalışabilir.",
+    "steps": [
+      {
+        "instruction": "Mevcut /tmp mount seçeneklerini kontrol edin",
+        "command": "mount | grep /tmp"
+      },
+      {
+        "instruction": "noexec ile yeniden mount edin",
+        "command": "sudo mount -o remount,noexec,nosuid,nodev /tmp"
+      },
+      {
+        "instruction": "Kalıcı yapmak için /etc/fstab'ı düzenleyin",
+        "command": "tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev 0 0"
+      }
+    ],
+    "verification": {
+      "command": "mount | grep /tmp | grep noexec",
+      "expected": "noexec seçeneği görünmeli"
+    }
+  },
+  "var_tmp_noexec": {
+    "match_pattern": "/var/tmp.*noexec.*olmadan",
+    "title": "/var/tmp Noexec Olmadan Mount Edilmiş",
+    "severity": "medium",
+    "impact": "Kalıcı geçici dizinde çalıştırılabilir dosyalar çalışabilir.",
+    "steps": [
+      {
+        "instruction": "/var/tmp'yi tmpfs olarak mount edin",
+        "command": "sudo mount -t tmpfs -o noexec,nosuid,nodev tmpfs /var/tmp"
+      },
+      {
+        "instruction": "Veya /tmp'ye bağlayın",
+        "command": "sudo rm -rf /var/tmp && sudo ln -s /tmp /var/tmp"
+      }
+    ]
+  },
+  "shm_noexec": {
+    "match_pattern": "/dev/shm.*noexec.*olmadan",
+    "title": "/dev/shm Noexec Olmadan Mount Edilmiş",
+    "severity": "medium",
+    "impact": "Paylaşımlı bellekte çalıştırılabilir dosyalar çalışabilir.",
+    "steps": [
+      {
+        "instruction": "noexec ile yeniden mount edin",
+        "command": "sudo mount -o remount,noexec,nosuid,nodev /dev/shm"
+      },
+      {
+        "instruction": "Kalıcı yapmak için /etc/fstab'a ekleyin",
+        "command": "tmpfs /dev/shm tmpfs defaults,noexec,nosuid,nodev 0 0"
+      }
+    ]
+  },
+  "home_nosuid": {
+    "match_pattern": "/home.*nosuid.*olmadan",
+    "title": "/home Nosuid Olmadan Mount Edilmiş",
+    "severity": "low",
+    "impact": "Home dizinlerinde SUID dosyaları çalışabilir.",
+    "steps": [
+      {
+        "instruction": "/home mount seçeneklerini kontrol edin",
+        "command": "mount | grep /home"
+      },
+      {
+        "instruction": "nosuid ile yeniden mount edin",
+        "command": "sudo mount -o remount,nosuid /home"
+      }
+    ]
+  },
+  "dangerous_suid": {
+    "match_pattern": "Tehlikeli.*SUID.*dosyası",
+    "title": "Tehlikeli SUID Dosyası Tespit Edildi",
+    "severity": "high",
+    "impact": "Ayrıcalık yükseltme riski.",
+    "steps": [
+      {
+        "instruction": "Dosyayı inceleyin",
+        "command": "ls -la DOSYA_YOLU && file DOSYA_YOLU"
+      },
+      {
+        "instruction": "Paket tarafından kurulup kurulmadığını kontrol edin",
+        "command": "dpkg -S DOSYA_YOLU"
+      },
+      {
+        "instruction": "Gerekli değilse SUID'i kaldırın",
+        "command": "sudo chmod u-s DOSYA_YOLU"
+      }
+    ]
+  },
+  "world_writable_sys": {
+    "match_pattern": "Sistem.*dizininde.*world-writable",
+    "title": "Sistem Dizininde World-Writable Dosya",
+    "severity": "high",
+    "impact": "Kritik sistem dosyaları değiştirilebilir.",
+    "steps": [
+      {
+        "instruction": "Dosyayı inceleyin",
+        "command": "ls -la DOSYA_YOLU"
+      },
+      {
+        "instruction": "World-writable'ı kaldırın",
+        "command": "sudo chmod o-w DOSYA_YOLU"
+      }
+    ]
+  },
+  "world_writable_home": {
+    "match_pattern": "world-writable.*dosya.*home|home.*world-writable",
+    "title": "Home Dizininde World-Writable Dosyalar",
+    "severity": "low",
+    "impact": "Diğer kullanıcılar dosyalarınızı değiştirebilir.",
+    "steps": [
+      {
+        "instruction": "World-writable dosyaları listeleyin",
+        "command": "find /home -type f -perm -002 -ls 2>/dev/null"
+      },
+      {
+        "instruction": "İzinleri düzeltin",
+        "command": "chmod o-w DOSYA_YOLU"
+      }
+    ]
+  },
+  "world_writable_dir": {
+    "match_pattern": "World-writable.*dizin.*sticky.*bit.*yok",
+    "title": "World-Writable Dizin (Sticky Bit Yok)",
+    "severity": "medium",
+    "impact": "Herkes dosya silebilir.",
+    "steps": [
+      {
+        "instruction": "Sticky bit ekleyin",
+        "command": "sudo chmod +t DIZIN_YOLU"
+      },
+      {
+        "instruction": "Veya world-writable'ı kaldırın",
+        "command": "sudo chmod o-w DIZIN_YOLU"
+      }
+    ]
+  },
+  "ssh_dir_perms": {
+    "match_pattern": "ssh.*dizin.*izinleri.*yanlış|\\.ssh.*izinleri.*yanlış",
+    "title": ".ssh Dizin İzinleri Yanlış",
+    "severity": "high",
+    "impact": "SSH güvenliği tehlikede.",
+    "steps": [
+      {
+        "instruction": ".ssh dizinini 700 yapın",
+        "command": "chmod 700 ~/.ssh"
+      },
+      {
+        "instruction": "Dosya sahipliğini düzeltin",
+        "command": "chown -R $USER:$USER ~/.ssh"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a' ~/.ssh",
+      "expected": "700"
+    }
+  },
+  "ssh_key_perms": {
+    "match_pattern": "SSH.*key.*izinleri.*yanlış",
+    "title": "SSH Key İzinleri Yanlış",
+    "severity": "high",
+    "impact": "Özel anahtarlar okunabilir durumda.",
+    "steps": [
+      {
+        "instruction": "Özel anahtarları 600 yapın",
+        "command": "chmod 600 ~/.ssh/id_*"
+      },
+      {
+        "instruction": "Açık anahtarları 644 yapın",
+        "command": "chmod 644 ~/.ssh/*.pub"
+      }
+    ]
+  },
+  "authorized_keys_perms": {
+    "match_pattern": "authorized_keys.*izinleri.*yanlış",
+    "title": "Authorized_keys İzinleri Yanlış",
+    "severity": "medium",
+    "impact": "Yetkili anahtarlar dosyası değiştirilebilir.",
+    "steps": [
+      {
+        "instruction": "authorized_keys'i 600 yapın",
+        "command": "chmod 600 ~/.ssh/authorized_keys"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a' ~/.ssh/authorized_keys",
+      "expected": "600"
+    }
+  },
+  "file_wrong_perms": {
+    "match_pattern": "Yanlış.*izinler:",
+    "title": "Dosya İzinleri Yanlış",
+    "severity": "medium",
+    "impact": "Dosya güvenliği tehlikede.",
+    "steps": [
+      {
+        "instruction": "Dosya izinlerini kontrol edin",
+        "command": "ls -la DOSYA_YOLU"
+      },
+      {
+        "instruction": "Uygun izinleri ayarlayın",
+        "command": "sudo chmod IZIN DOSYA_YOLU",
+        "note": "Sistem dosyaları genellikle 644 veya 600 olmalı"
+      }
+    ]
   }
 }

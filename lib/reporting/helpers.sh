@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.3.2 - Raporlama Yardımcı Fonksiyonları
+# Security Scanner v0.3.5 - Raporlama Yardımcı Fonksiyonları
 # helpers.sh - HTML escape, çeviri ve SVG ikonlar
 #
 
@@ -66,6 +66,14 @@ lookup_remediation() {
         filesystem) json_file="$remediation_dir/filesystem.json" ;;
         services) json_file="$remediation_dir/services.json" ;;
         permissions) json_file="$remediation_dir/permissions.json" ;;
+        malware) json_file="$remediation_dir/malware.json" ;;
+        gnome|gnome-extensions) json_file="$remediation_dir/gnome.json" ;;
+        containers|docker) json_file="$remediation_dir/containers.json" ;;
+        compliance) json_file="$remediation_dir/compliance.json" ;;
+        fim) json_file="$remediation_dir/fim.json" ;;
+        system|system-info) json_file="$remediation_dir/system.json" ;;
+        kernel|kernel-security) json_file="$remediation_dir/kernel-security.json" ;;
+        security-updates) json_file="$remediation_dir/security-updates.json" ;;
         *) json_file="$remediation_dir/general.json" ;;
     esac
 

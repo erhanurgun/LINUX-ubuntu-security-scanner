@@ -1,0 +1,209 @@
+{
+  "package_list_old": {
+    "match_pattern": "Paket.*listesi.*güncel.*değil",
+    "title": "Paket Listesi Güncel Değil",
+    "severity": "low",
+    "impact": "Mevcut güncellemeler görülmeyebilir.",
+    "steps": [
+      {
+        "instruction": "Paket listesini güncelleyin",
+        "command": "sudo apt update"
+      },
+      {
+        "instruction": "Otomatik güncellemeyi etkinleştirin",
+        "command": "sudo systemctl enable --now apt-daily.timer"
+      }
+    ],
+    "verification": {
+      "command": "ls -la /var/lib/apt/lists/",
+      "expected": "Güncel tarihli dosyalar"
+    }
+  },
+  "security_updates_pending": {
+    "match_pattern": "güvenlik.*güncellemesi.*bekliyor",
+    "title": "Güvenlik Güncellemeleri Bekliyor",
+    "severity": "high",
+    "impact": "Bilinen güvenlik açıkları mevcut olabilir.",
+    "steps": [
+      {
+        "instruction": "Bekleyen güncellemeleri listeleyin",
+        "command": "apt list --upgradable 2>/dev/null | grep -i security"
+      },
+      {
+        "instruction": "Sadece güvenlik güncellemelerini yükleyin",
+        "command": "sudo apt upgrade -y"
+      },
+      {
+        "instruction": "Tüm güncellemeleri yükleyin",
+        "command": "sudo apt dist-upgrade -y",
+        "note": "Bağımlılık değişikliklerini de yükler"
+      }
+    ],
+    "verification": {
+      "command": "apt list --upgradable 2>/dev/null | wc -l",
+      "expected": "0 veya sadece başlık satırı"
+    }
+  },
+  "auto_updates_disabled": {
+    "match_pattern": "Otomatik.*güvenlik.*güncellemeleri.*devre.*dışı",
+    "title": "Otomatik Güvenlik Güncellemeleri Devre Dışı",
+    "severity": "medium",
+    "impact": "Güvenlik yamaları otomatik uygulanmıyor.",
+    "steps": [
+      {
+        "instruction": "unattended-upgrades paketini kurun",
+        "command": "sudo apt install unattended-upgrades"
+      },
+      {
+        "instruction": "Yapılandırma dosyasını düzenleyin",
+        "command": "sudo nano /etc/apt/apt.conf.d/50unattended-upgrades"
+      },
+      {
+        "instruction": "Güvenlik güncellemelerini etkinleştirin",
+        "command": "sudo dpkg-reconfigure -plow unattended-upgrades"
+      }
+    ],
+    "verification": {
+      "command": "cat /etc/apt/apt.conf.d/20auto-upgrades",
+      "expected": "APT::Periodic::Unattended-Upgrade \"1\";"
+    }
+  },
+  "unattended_missing": {
+    "match_pattern": "Otomatik.*güncelleme.*sistemi.*kurulu.*değil|unattended-upgrades.*yok",
+    "title": "Otomatik Güncelleme Sistemi Kurulu Değil",
+    "severity": "medium",
+    "impact": "Manuel güncelleme gerekiyor.",
+    "steps": [
+      {
+        "instruction": "unattended-upgrades paketini kurun",
+        "command": "sudo apt install unattended-upgrades"
+      },
+      {
+        "instruction": "Otomatik güncellemeleri etkinleştirin",
+        "command": "sudo dpkg-reconfigure -plow unattended-upgrades"
+      }
+    ]
+  },
+  "kernel_pending": {
+    "match_pattern": "Yeni.*kernel.*yüklü.*aktif.*değil",
+    "title": "Yeni Kernel Yüklü Ama Aktif Değil",
+    "severity": "medium",
+    "impact": "Kernel güvenlik yamaları uygulanmamış.",
+    "steps": [
+      {
+        "instruction": "Mevcut kernel'i kontrol edin",
+        "command": "uname -r"
+      },
+      {
+        "instruction": "Yüklü kernel'leri listeleyin",
+        "command": "dpkg -l | grep linux-image"
+      },
+      {
+        "instruction": "Sistemi yeniden başlatın",
+        "command": "sudo reboot",
+        "note": "Bakım penceresi planlayın"
+      }
+    ],
+    "verification": {
+      "command": "uname -r",
+      "expected": "En son kernel versiyonu"
+    }
+  },
+  "old_kernels": {
+    "match_pattern": "eski.*kernel.*yüklü",
+    "title": "Eski Kernel'ler Yüklü",
+    "severity": "low",
+    "impact": "Disk alanı israfı.",
+    "steps": [
+      {
+        "instruction": "Eski kernel'leri listeleyin",
+        "command": "dpkg -l | grep linux-image | grep -v $(uname -r)"
+      },
+      {
+        "instruction": "Eski kernel'leri temizleyin",
+        "command": "sudo apt autoremove --purge"
+      }
+    ]
+  },
+  "reboot_required": {
+    "match_pattern": "Sistem.*yeniden.*başlatma.*bekliyor|reboot.*required",
+    "title": "Sistem Yeniden Başlatma Bekliyor",
+    "severity": "high",
+    "impact": "Güvenlik güncellemeleri tam olarak uygulanmamış.",
+    "steps": [
+      {
+        "instruction": "Neden yeniden başlatma gerektiğini kontrol edin",
+        "command": "cat /var/run/reboot-required.pkgs"
+      },
+      {
+        "instruction": "Bakım penceresi planlayın ve yeniden başlatın",
+        "command": "sudo reboot",
+        "note": "Üretim sistemleri için planlama yapın"
+      }
+    ],
+    "verification": {
+      "command": "test -f /var/run/reboot-required && echo 'Reboot gerekli' || echo 'OK'",
+      "expected": "OK"
+    }
+  },
+  "apt_daily_disabled": {
+    "match_pattern": "apt-daily.*timer.*devre.*dışı",
+    "title": "APT Daily Timer Devre Dışı",
+    "severity": "low",
+    "impact": "Paket listesi otomatik güncellenmez.",
+    "steps": [
+      {
+        "instruction": "apt-daily timer'ı etkinleştirin",
+        "command": "sudo systemctl enable --now apt-daily.timer"
+      },
+      {
+        "instruction": "apt-daily-upgrade timer'ı etkinleştirin",
+        "command": "sudo systemctl enable --now apt-daily-upgrade.timer"
+      }
+    ],
+    "verification": {
+      "command": "systemctl is-active apt-daily.timer",
+      "expected": "active"
+    }
+  },
+  "snap_updates": {
+    "match_pattern": "snap.*paketi.*güncellenebilir",
+    "title": "Snap Paketleri Güncellenebilir",
+    "severity": "low",
+    "impact": "Snap paketleri güncel değil.",
+    "steps": [
+      {
+        "instruction": "Güncellenebilir snap'leri listeleyin",
+        "command": "snap refresh --list"
+      },
+      {
+        "instruction": "Tüm snap paketlerini güncelleyin",
+        "command": "sudo snap refresh"
+      }
+    ],
+    "verification": {
+      "command": "snap refresh --list 2>/dev/null | wc -l",
+      "expected": "0"
+    }
+  },
+  "flatpak_updates": {
+    "match_pattern": "flatpak.*paketi.*güncellenebilir",
+    "title": "Flatpak Paketleri Güncellenebilir",
+    "severity": "low",
+    "impact": "Flatpak uygulamaları güncel değil.",
+    "steps": [
+      {
+        "instruction": "Güncellenebilir flatpak'leri listeleyin",
+        "command": "flatpak remote-ls --updates"
+      },
+      {
+        "instruction": "Tüm flatpak paketlerini güncelleyin",
+        "command": "flatpak update -y"
+      }
+    ],
+    "verification": {
+      "command": "flatpak remote-ls --updates 2>/dev/null | wc -l",
+      "expected": "0"
+    }
+  }
+}

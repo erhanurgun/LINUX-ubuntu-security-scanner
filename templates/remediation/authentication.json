@@ -171,7 +171,7 @@
   },
   "empty_password": {
     "title": "Boş Şifreli Hesap Tespit Edildi",
-    "match_pattern": "boş.*şifre|empty.*password|şifresi.*yok",
+    "match_pattern": "boş.*şifre|empty.*password|şifresi.*yok|Boş.*şifreli.*hesap",
     "severity": "critical",
     "impact": "Şifresiz giriş mümkün",
     "steps": [
@@ -196,5 +196,288 @@
       "command": "sudo awk -F: '($2 == \"\") {print $1}' /etc/shadow",
       "expected": "Hiçbir sonuç dönmemelidir"
     }
+  },
+  "failed_logins_high": {
+    "match_pattern": "Son.*24.*saatte.*başarısız.*giriş",
+    "title": "Yüksek Başarısız Giriş Sayısı",
+    "description": "Son 24 saatte çok sayıda başarısız giriş denemesi tespit edildi.",
+    "severity": "high",
+    "impact": "Brute force saldırısı devam ediyor olabilir.",
+    "steps": [
+      {
+        "instruction": "Başarısız girişlerin kaynağını kontrol edin",
+        "command": "journalctl -u sshd --since '24 hours ago' | grep 'Failed' | awk '{print $NF}' | sort | uniq -c | sort -rn | head -10"
+      },
+      {
+        "instruction": "En çok saldıran IP'leri engelleyin",
+        "command": "sudo ufw deny from SALDIRGAN_IP",
+        "note": "Yukarıdaki komuttan gelen IP'leri kullanın"
+      },
+      {
+        "instruction": "Fail2ban kurun ve etkinleştirin",
+        "command": "sudo apt install fail2ban && sudo systemctl enable --now fail2ban"
+      },
+      {
+        "instruction": "SSH için Fail2ban jail oluşturun",
+        "command": "sudo nano /etc/fail2ban/jail.local"
+      },
+      {
+        "instruction": "SSH korumasını yapılandırın",
+        "command": "[sshd]\\nenabled = true\\nport = ssh\\nfilter = sshd\\nlogpath = /var/log/auth.log\\nmaxretry = 5\\nbantime = 3600"
+      }
+    ],
+    "verification": {
+      "command": "sudo fail2ban-client status sshd",
+      "expected": "Currently banned IP'ler listesi"
+    }
+  },
+  "ssh_empty_password_permit": {
+    "match_pattern": "SSH.*boş.*şifre.*izni.*aktif|PermitEmptyPasswords",
+    "title": "SSH Boş Şifre İzni Aktif",
+    "severity": "critical",
+    "impact": "Şifresi olmayan hesaplarla SSH girişi yapılabilir.",
+    "steps": [
+      {
+        "instruction": "SSH yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "instruction": "PermitEmptyPasswords'u no yapın",
+        "command": "PermitEmptyPasswords no"
+      },
+      {
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      }
+    ],
+    "verification": {
+      "command": "grep PermitEmptyPasswords /etc/ssh/sshd_config",
+      "expected": "PermitEmptyPasswords no"
+    }
+  },
+  "ssh_x11_forwarding": {
+    "match_pattern": "SSH.*X11.*forwarding.*aktif|X11Forwarding.*yes",
+    "title": "SSH X11 Forwarding Aktif",
+    "severity": "low",
+    "impact": "Grafiksel uygulama iletimi güvenlik riski oluşturabilir.",
+    "steps": [
+      {
+        "instruction": "SSH yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "instruction": "X11Forwarding'i kapatın",
+        "command": "X11Forwarding no"
+      },
+      {
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      }
+    ],
+    "verification": {
+      "command": "grep X11Forwarding /etc/ssh/sshd_config",
+      "expected": "X11Forwarding no"
+    }
+  },
+  "ssh_protocol1": {
+    "match_pattern": "SSH.*Protocol.*1.*aktif",
+    "title": "SSH Protocol 1 Aktif",
+    "severity": "critical",
+    "impact": "SSH Protocol 1 ciddi güvenlik açıkları içerir.",
+    "steps": [
+      {
+        "instruction": "SSH yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "instruction": "Sadece Protocol 2 kullanın",
+        "command": "Protocol 2"
+      },
+      {
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      }
+    ]
+  },
+  "ssh_maxauthtries": {
+    "match_pattern": "SSH.*MaxAuthTries.*yüksek",
+    "title": "SSH MaxAuthTries Yüksek",
+    "severity": "low",
+    "impact": "Fazla deneme hakkı brute force'u kolaylaştırır.",
+    "steps": [
+      {
+        "instruction": "SSH yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "instruction": "MaxAuthTries değerini düşürün",
+        "command": "MaxAuthTries 3",
+        "note": "3-4 deneme önerilir"
+      },
+      {
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      }
+    ]
+  },
+  "ssh_user_restriction": {
+    "match_pattern": "SSH.*kullanıcı.*kısıtlaması.*yok|AllowUsers.*AllowGroups",
+    "title": "SSH Kullanıcı Kısıtlaması Yok",
+    "severity": "low",
+    "impact": "Tüm kullanıcılar SSH ile bağlanabilir.",
+    "steps": [
+      {
+        "instruction": "SSH yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "instruction": "İzin verilen kullanıcıları belirleyin",
+        "command": "AllowUsers kullanici1 kullanici2",
+        "note": "Veya AllowGroups ssh-users"
+      },
+      {
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      }
+    ]
+  },
+  "password_max_age": {
+    "match_pattern": "Şifre.*maksimum.*yaşı.*yüksek|PASS_MAX_DAYS",
+    "title": "Şifre Maksimum Yaşı Çok Yüksek",
+    "severity": "medium",
+    "impact": "Şifreler uzun süre değiştirilmeyebilir.",
+    "steps": [
+      {
+        "instruction": "Login ayarlarını düzenleyin",
+        "command": "sudo nano /etc/login.defs"
+      },
+      {
+        "instruction": "PASS_MAX_DAYS değerini ayarlayın",
+        "command": "PASS_MAX_DAYS 90",
+        "note": "90 gün önerilir"
+      },
+      {
+        "instruction": "Mevcut kullanıcılar için uygulayın",
+        "command": "sudo chage -M 90 KULLANICI_ADI"
+      }
+    ]
+  },
+  "password_min_length": {
+    "match_pattern": "Minimum.*şifre.*uzunluğu.*düşük",
+    "title": "Minimum Şifre Uzunluğu Düşük",
+    "severity": "medium",
+    "impact": "Kısa şifreler tahmin edilmesi kolaydır.",
+    "steps": [
+      {
+        "instruction": "pwquality yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/security/pwquality.conf"
+      },
+      {
+        "instruction": "Minimum uzunluğu artırın",
+        "command": "minlen = 12"
+      },
+      {
+        "instruction": "login.defs'i de güncelleyin",
+        "command": "sudo sed -i 's/PASS_MIN_LEN.*/PASS_MIN_LEN 12/' /etc/login.defs"
+      }
+    ]
+  },
+  "pwquality_minlen": {
+    "match_pattern": "pwquality.*minimum.*uzunluk.*düşük",
+    "title": "Pwquality Minimum Uzunluk Düşük",
+    "severity": "low",
+    "impact": "PAM şifre kalitesi kontrolü zayıf.",
+    "steps": [
+      {
+        "instruction": "pwquality yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/security/pwquality.conf"
+      },
+      {
+        "instruction": "minlen değerini artırın",
+        "command": "minlen = 12"
+      }
+    ]
+  },
+  "pwquality_missing": {
+    "match_pattern": "pwquality.*yapılandırması.*bulunamadı|pwquality.*yok",
+    "title": "Pwquality Yapılandırması Bulunamadı",
+    "severity": "low",
+    "impact": "Şifre kalite kontrolü yapılandırılmamış.",
+    "steps": [
+      {
+        "instruction": "libpam-pwquality paketini kurun",
+        "command": "sudo apt install libpam-pwquality"
+      },
+      {
+        "instruction": "Yapılandırma dosyasını oluşturun",
+        "command": "sudo nano /etc/security/pwquality.conf"
+      },
+      {
+        "instruction": "Temel ayarları ekleyin",
+        "command": "minlen = 12\\ndcredit = -1\\nucredit = -1\\nlcredit = -1\\nocredit = -1"
+      }
+    ]
+  },
+  "nopasswd_sudo": {
+    "match_pattern": "NOPASSWD.*sudo.*kuralı",
+    "title": "NOPASSWD Sudo Kuralları Var",
+    "severity": "medium",
+    "impact": "Bazı komutlar şifresiz sudo ile çalıştırılabilir.",
+    "steps": [
+      {
+        "instruction": "Sudoers dosyasını düzenleyin",
+        "command": "sudo visudo"
+      },
+      {
+        "instruction": "NOPASSWD kurallarını bulun ve kaldırın",
+        "note": "NOPASSWD: içeren satırları gözden geçirin"
+      },
+      {
+        "instruction": "Alternatif: timeout'u uzatın",
+        "command": "Defaults timestamp_timeout=15",
+        "note": "NOPASSWD yerine daha uzun cache süresi"
+      }
+    ]
+  },
+  "dangerous_sudo": {
+    "match_pattern": "Tehlikeli.*sudo.*kuralı",
+    "title": "Tehlikeli Sudo Kuralı Tespit Edildi",
+    "severity": "high",
+    "impact": "Ayrıcalık yükseltme riski.",
+    "steps": [
+      {
+        "instruction": "Sudoers dosyasını inceleyin",
+        "command": "sudo visudo"
+      },
+      {
+        "instruction": "Tehlikeli kuralları kaldırın veya kısıtlayın",
+        "note": "ALL=(ALL) ALL gibi geniş kuralları gözden geçirin"
+      },
+      {
+        "instruction": "En az yetki prensibini uygulayın",
+        "tip": "Kullanıcılara sadece gerekli komutları verin"
+      }
+    ]
+  },
+  "pam_wheel": {
+    "match_pattern": "pam_wheel.*zorlanmıyor|pam_wheel.*mevcut.*ama",
+    "title": "Pam_wheel Zorlanmıyor",
+    "severity": "low",
+    "impact": "su komutu tüm kullanıcılara açık.",
+    "steps": [
+      {
+        "instruction": "PAM su yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/pam.d/su"
+      },
+      {
+        "instruction": "pam_wheel satırındaki yorumu kaldırın",
+        "command": "auth required pam_wheel.so",
+        "note": "# işaretini kaldırın"
+      },
+      {
+        "instruction": "wheel grubuna kullanıcı ekleyin",
+        "command": "sudo usermod -aG wheel KULLANICI_ADI"
+      }
+    ]
   }
 }

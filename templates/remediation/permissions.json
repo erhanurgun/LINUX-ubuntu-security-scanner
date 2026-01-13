@@ -219,5 +219,219 @@
       "command": "groups KULLANICI_ADI",
       "expected": "docker, lxd, disk gibi hassas gruplar olmamalı"
     }
+  },
+  "home_world_writable": {
+    "match_pattern": "Home.*dizini.*world-writable",
+    "title": "Home Dizini World-Writable",
+    "severity": "high",
+    "impact": "Diğer kullanıcılar home dizininizi değiştirebilir.",
+    "steps": [
+      {
+        "instruction": "Home dizini izinlerini düzeltin",
+        "command": "chmod 700 /home/KULLANICI"
+      },
+      {
+        "instruction": "Sahipliği doğrulayın",
+        "command": "chown KULLANICI:KULLANICI /home/KULLANICI"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a' /home/KULLANICI",
+      "expected": "700"
+    }
+  },
+  "home_public": {
+    "match_pattern": "Home.*dizini.*herkese.*açık",
+    "title": "Home Dizini Herkese Açık",
+    "severity": "low",
+    "impact": "Diğer kullanıcılar dosyalarınızı okuyabilir.",
+    "steps": [
+      {
+        "instruction": "Home dizini izinlerini sıkılaştırın",
+        "command": "chmod 750 /home/KULLANICI",
+        "note": "Veya 700 tam gizlilik için"
+      }
+    ]
+  },
+  "world_writable_log": {
+    "match_pattern": "World-writable.*log",
+    "title": "World-Writable Log Dosyası",
+    "severity": "medium",
+    "impact": "Log dosyaları değiştirilebilir, kanıtlar silinebilir.",
+    "steps": [
+      {
+        "instruction": "Log dosyası izinlerini düzeltin",
+        "command": "sudo chmod 640 LOG_DOSYASI"
+      },
+      {
+        "instruction": "Sahipliği ayarlayın",
+        "command": "sudo chown syslog:adm LOG_DOSYASI"
+      }
+    ]
+  },
+  "varlog_perms": {
+    "match_pattern": "/var/log.*izinleri.*gevşek",
+    "title": "/var/log İzinleri Gevşek",
+    "severity": "medium",
+    "impact": "Log dizini yetkisiz erişime açık.",
+    "steps": [
+      {
+        "instruction": "/var/log izinlerini düzeltin",
+        "command": "sudo chmod 750 /var/log"
+      },
+      {
+        "instruction": "Log dosyalarını düzeltin",
+        "command": "sudo chmod 640 /var/log/*.log"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a' /var/log",
+      "expected": "750 veya daha kısıtlayıcı"
+    }
+  },
+  "dir_perms_weak": {
+    "match_pattern": "Dizin.*izinleri.*gevşek",
+    "title": "Dizin İzinleri Gevşek",
+    "severity": "medium",
+    "impact": "Dizin yetkisiz erişime açık.",
+    "steps": [
+      {
+        "instruction": "Dizin izinlerini kontrol edin",
+        "command": "ls -la DIZIN_YOLU"
+      },
+      {
+        "instruction": "İzinleri sıkılaştırın",
+        "command": "sudo chmod 755 DIZIN_YOLU",
+        "note": "Hassas dizinler için 700 kullanın"
+      }
+    ]
+  },
+  "ssl_key_perms": {
+    "match_pattern": "SSL.*private.*key.*izinleri.*gevşek",
+    "title": "SSL Private Key İzinleri Gevşek",
+    "severity": "high",
+    "impact": "SSL anahtarları okunabilir, MITM riski.",
+    "steps": [
+      {
+        "instruction": "SSL key izinlerini düzeltin",
+        "command": "sudo chmod 600 KEY_DOSYASI"
+      },
+      {
+        "instruction": "Sahipliği ayarlayın",
+        "command": "sudo chown root:root KEY_DOSYASI"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a' KEY_DOSYASI",
+      "expected": "600"
+    }
+  },
+  "path_world_writable": {
+    "match_pattern": "PATH.*world-writable.*dizin",
+    "title": "PATH'de World-Writable Dizin",
+    "severity": "high",
+    "impact": "Zararlı script enjeksiyonu mümkün.",
+    "steps": [
+      {
+        "instruction": "PATH'teki dizinleri kontrol edin",
+        "command": "echo $PATH | tr ':' '\\n' | xargs ls -ld"
+      },
+      {
+        "instruction": "World-writable'ı kaldırın",
+        "command": "sudo chmod o-w DIZIN_YOLU"
+      }
+    ]
+  },
+  "path_current_dir": {
+    "match_pattern": "PATH.*geçerli.*dizin|PATH.*\\..*var",
+    "title": "PATH'de . (Geçerli Dizin) Var",
+    "severity": "high",
+    "impact": "Mevcut dizindeki zararlı script çalıştırılabilir.",
+    "steps": [
+      {
+        "instruction": "PATH'ten . kaldırın",
+        "note": "~/.bashrc veya ~/.profile dosyasında PATH tanımını düzenleyin"
+      },
+      {
+        "instruction": "Mevcut PATH'i kontrol edin",
+        "command": "echo $PATH | tr ':' '\\n'"
+      }
+    ]
+  },
+  "suid_sgid_script": {
+    "match_pattern": "SUID/SGID.*script",
+    "title": "SUID/SGID Script Tespit Edildi",
+    "severity": "critical",
+    "impact": "Script'ler ayrıcalık yükseltme riski taşır.",
+    "steps": [
+      {
+        "instruction": "Script'i inceleyin",
+        "command": "ls -la SCRIPT_YOLU && file SCRIPT_YOLU"
+      },
+      {
+        "instruction": "SUID/SGID'i kaldırın",
+        "command": "sudo chmod ug-s SCRIPT_YOLU"
+      },
+      {
+        "instruction": "Alternatif: sudo ile çalıştırın",
+        "note": "SUID script yerine sudo kullanın"
+      }
+    ]
+  },
+  "umask_weak": {
+    "match_pattern": "Umask.*değeri.*gevşek",
+    "title": "Umask Değeri Gevşek",
+    "severity": "medium",
+    "impact": "Yeni dosyalar çok açık izinlerle oluşturulur.",
+    "steps": [
+      {
+        "instruction": "Mevcut umask'ı kontrol edin",
+        "command": "umask"
+      },
+      {
+        "instruction": "Umask'ı 027 veya 077 yapın",
+        "command": "umask 027"
+      },
+      {
+        "instruction": "Kalıcı yapmak için ~/.bashrc'ye ekleyin",
+        "command": "echo 'umask 027' >> ~/.bashrc"
+      }
+    ],
+    "verification": {
+      "command": "umask",
+      "expected": "0027 veya 0077"
+    }
+  },
+  "system_umask_weak": {
+    "match_pattern": "Sistem.*umask.*değeri.*gevşek",
+    "title": "Sistem Umask Değeri Gevşek",
+    "severity": "medium",
+    "impact": "Sistem genelinde dosyalar açık izinlerle oluşturulur.",
+    "steps": [
+      {
+        "instruction": "login.defs'i düzenleyin",
+        "command": "sudo nano /etc/login.defs"
+      },
+      {
+        "instruction": "UMASK değerini ayarlayın",
+        "command": "UMASK 027"
+      }
+    ]
+  },
+  "sticky_bit_dir": {
+    "match_pattern": "sticky.*bit.*yok",
+    "title": "Dizin Sticky Bit Eksik",
+    "severity": "high",
+    "impact": "Kullanıcılar birbirlerinin dosyalarını silebilir.",
+    "steps": [
+      {
+        "instruction": "Sticky bit ekleyin",
+        "command": "sudo chmod +t DIZIN_YOLU"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a' DIZIN_YOLU",
+      "expected": "1xxx formatında (1 sticky bit)"
+    }
   }
 }

@@ -1,0 +1,182 @@
+{
+  "old_kernel": {
+    "match_pattern": "Eski.*kernel|kernel.*eski|outdated.*kernel",
+    "title": "Eski Kernel Versiyonu",
+    "description": "Sistem eski bir kernel versiyonu kullanıyor.",
+    "impact": "Bilinen güvenlik açıkları mevcut olabilir.",
+    "steps": [
+      {
+        "instruction": "Mevcut kernel versiyonunu kontrol edin",
+        "command": "uname -r"
+      },
+      {
+        "instruction": "Mevcut güncellemeleri kontrol edin",
+        "command": "sudo apt update && apt list --upgradable | grep linux"
+      },
+      {
+        "instruction": "Kernel güncellemelerini yükleyin",
+        "command": "sudo apt install linux-generic"
+      },
+      {
+        "instruction": "Sistemi yeniden başlatın",
+        "command": "sudo reboot",
+        "tip": "Yeni kernel'in yüklenmesi için yeniden başlatma gereklidir"
+      }
+    ],
+    "verification": {
+      "command": "uname -r",
+      "expected": "Güncel kernel versiyonu"
+    }
+  },
+  "long_uptime": {
+    "match_pattern": "uzun.*süredir.*yeniden.*başlatılmamış|uptime.*long|reboot.*needed",
+    "title": "Sistem Uzun Süredir Yeniden Başlatılmamış",
+    "description": "Sistem uzun süredir yeniden başlatılmamış, bekleyen kernel güncellemeleri olabilir.",
+    "impact": "Güvenlik yamaları kernel seviyesinde uygulanmamış olabilir.",
+    "steps": [
+      {
+        "instruction": "Sistem çalışma süresini kontrol edin",
+        "command": "uptime"
+      },
+      {
+        "instruction": "Bekleyen güncellemeleri kontrol edin",
+        "command": "sudo apt update && apt list --upgradable"
+      },
+      {
+        "instruction": "Uygun bir bakım penceresinde yeniden başlatın",
+        "command": "sudo reboot",
+        "tip": "Üretim sistemleri için bakım penceresini planlayın"
+      }
+    ]
+  },
+  "multiple_uid0": {
+    "match_pattern": "Birden.*fazla.*UID.*0|UID.*0.*hesabı|multiple.*root",
+    "title": "Birden Fazla UID 0 Hesabı",
+    "description": "Sistemde root (UID 0) yetkilerine sahip birden fazla hesap var.",
+    "impact": "Yetkisiz ayrıcalıklı erişim, güvenlik denetimi zorlaşır.",
+    "steps": [
+      {
+        "instruction": "UID 0 hesaplarını listeleyin",
+        "command": "awk -F: '($3 == 0) {print $1}' /etc/passwd"
+      },
+      {
+        "instruction": "Her hesabın amacını değerlendirin",
+        "note": "Sadece 'root' hesabının UID 0 olması gerekir"
+      },
+      {
+        "instruction": "Gereksiz UID 0 hesaplarını devre dışı bırakın",
+        "command": "sudo usermod -L KULLANICI_ADI",
+        "tip": "Hesabı silmek yerine kilitlemeyi tercih edin"
+      },
+      {
+        "instruction": "Veya UID'yi değiştirin",
+        "command": "sudo usermod -u YENI_UID KULLANICI_ADI"
+      }
+    ],
+    "verification": {
+      "command": "awk -F: '($3 == 0) {print}' /etc/passwd | wc -l",
+      "expected": "1 (sadece root)"
+    }
+  },
+  "disk_full": {
+    "match_pattern": "Disk.*dolmak.*üzere|disk.*full|disk.*dolu|alan.*yetersiz",
+    "title": "Disk Dolmak Üzere",
+    "description": "Disk alanı kritik seviyede düşük.",
+    "impact": "Sistem servisleri çalışmayı durdurabilir, log yazılamayabilir.",
+    "steps": [
+      {
+        "instruction": "Disk kullanımını kontrol edin",
+        "command": "df -h"
+      },
+      {
+        "instruction": "Büyük dosyaları bulun",
+        "command": "sudo du -sh /* 2>/dev/null | sort -rh | head -10"
+      },
+      {
+        "instruction": "Log dosyalarını temizleyin",
+        "command": "sudo journalctl --vacuum-time=7d",
+        "note": "7 günden eski journal loglarını siler"
+      },
+      {
+        "instruction": "Apt önbelleğini temizleyin",
+        "command": "sudo apt clean && sudo apt autoremove"
+      },
+      {
+        "instruction": "Geçici dosyaları temizleyin",
+        "command": "sudo rm -rf /tmp/* /var/tmp/*",
+        "tip": "Dikkatli olun, aktif dosyalar silinebilir"
+      }
+    ],
+    "verification": {
+      "command": "df -h /",
+      "expected": "Kullanım %90'ın altında olmalı"
+    }
+  },
+  "failed_services": {
+    "match_pattern": "Başarısız.*servisler|failed.*services|servis.*hata",
+    "title": "Başarısız Servisler Var",
+    "description": "Sistemde başarısız durumda servisler mevcut.",
+    "impact": "Kritik sistem fonksiyonları çalışmıyor olabilir.",
+    "steps": [
+      {
+        "instruction": "Başarısız servisleri listeleyin",
+        "command": "systemctl --failed"
+      },
+      {
+        "instruction": "Servis loglarını inceleyin",
+        "command": "journalctl -u SERVIS_ADI -n 50",
+        "note": "SERVIS_ADI yerine başarısız servis adını yazın"
+      },
+      {
+        "instruction": "Servisi yeniden başlatmayı deneyin",
+        "command": "sudo systemctl restart SERVIS_ADI"
+      },
+      {
+        "instruction": "Sorunu çözüp servisi etkinleştirin",
+        "command": "sudo systemctl enable --now SERVIS_ADI"
+      }
+    ]
+  },
+  "vm_detected": {
+    "match_pattern": "Sanal.*makine.*tespit|virtual.*machine|VM.*detected",
+    "title": "Sanal Makine Tespit Edildi",
+    "description": "Sistem bir sanal makine üzerinde çalışıyor.",
+    "impact": "Bilgilendirme amaçlı - VM'e özgü güvenlik önlemleri gerekebilir.",
+    "steps": [
+      {
+        "instruction": "Sanallaştırma türünü doğrulayın",
+        "command": "systemd-detect-virt"
+      },
+      {
+        "instruction": "VM guest araçlarının güncel olduğundan emin olun",
+        "command": "dpkg -l | grep -E 'open-vm-tools|qemu-guest-agent|virtualbox-guest'",
+        "note": "Hypervisor'a göre uygun araçları kurun"
+      }
+    ]
+  },
+  "secure_boot_disabled": {
+    "match_pattern": "Secure.*Boot.*devre.*dışı|secure.*boot.*disabled",
+    "title": "Secure Boot Devre Dışı",
+    "description": "UEFI Secure Boot özelliği devre dışı.",
+    "impact": "Bootloader ve kernel imza doğrulaması yapılmıyor, rootkit riski artar.",
+    "steps": [
+      {
+        "instruction": "Secure Boot durumunu kontrol edin",
+        "command": "mokutil --sb-state"
+      },
+      {
+        "instruction": "UEFI/BIOS ayarlarından Secure Boot'u etkinleştirin",
+        "note": "Sistemi yeniden başlatıp BIOS/UEFI'ye girin"
+      },
+      {
+        "instruction": "Signed kernel kullandığınızdan emin olun",
+        "command": "apt list --installed | grep linux-image",
+        "tip": "Ubuntu imzalı kerneller varsayılan olarak Secure Boot uyumludur"
+      }
+    ],
+    "verification": {
+      "command": "mokutil --sb-state",
+      "expected": "SecureBoot enabled"
+    }
+  }
+}
