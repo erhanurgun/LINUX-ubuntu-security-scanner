@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.2] - 2026-01-13
+### Fixed
+- Türkçe karakter düzeltmeleri (icin->için, cozum->çözüm, vb.)
+- Versiyon tutarsızlığı (header yorumlarda v0.1.0->v0.2.2)
+- Pattern matching'de gereksiz ASCII fallback'ler kaldırıldı
+### Added
+- DRY helper fonksiyonlar (get_sshd_param, get_sysctl, get_login_defs)
+### Changed
+- modules/06-authentication.sh: 11 tekrar eden pattern refactor edildi
+- modules/05-network.sh: 5 tekrar eden pattern refactor edildi
+
 ## [0.2.1] - 2026-01-13
 ### Fixed
 - Tab active state bug fix (hardcoded class sorunu)

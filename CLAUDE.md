@@ -1,7 +1,7 @@
 # Ubuntu Security Scanner - Geliştirme Kuralları
 
 ## Proje Bilgisi
-- **Proje:** Ubuntu Security Scanner v0.2.1
+- **Proje:** Ubuntu Security Scanner v0.2.2
 - **Dil:** Bash (shell scripting)
 - **Amaç:** Ubuntu sistemler için güvenlik tarama aracı
 
@@ -24,6 +24,7 @@ Versiyon değiştiğinde şu dosyalar güncellenmelidir:
 3. `CHANGELOG.md` - Değişiklik kaydı
 
 ### Değişiklik Kaydı
+- **v0.2.2** - Türkçe karakter düzeltmeleri, DRY helper fonksiyonlar
 - **v0.2.1** - Tab active state bug fix, Tümü Aç/Kapat kaldırıldı, Her satıra Detay butonu eklendi
 - **v0.2.0** - Modal Dialog eklendi, Tab active state ve hidden/show bug fix'leri
 - **v0.1.0** - İlk sürüm, TXT kaldırıldı, JSON/HTML modernize edildi

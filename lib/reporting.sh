@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.2.1 - Raporlama Modülü
+# Security Scanner v0.2.2 - Raporlama Modülü
 # reporting.sh - Terminal, JSON ve İnteraktif HTML rapor oluşturma
 #
 # Yeni HTML özellikleri:
