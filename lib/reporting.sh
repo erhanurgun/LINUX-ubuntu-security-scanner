@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Security Scanner v0.1.0 - Raporlama Modülü
+# Security Scanner v0.2.1 - Raporlama Modülü
 # reporting.sh - Terminal, JSON ve İnteraktif HTML rapor oluşturma
 #
 # Yeni HTML özellikleri:
@@ -504,6 +504,38 @@ generate_html_report() {
         /* Fallback minimal styles for offline use */
         .hidden { display: none !important; }
         .remediation-panel.show { display: block !important; }
+
+        /* Tab active state */
+        .tab {
+            transition: all 0.2s ease;
+        }
+        .tab.active {
+            background-color: rgb(37, 99, 235) !important;
+            color: white !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        .tab:not(.active):hover {
+            background-color: rgb(75, 85, 99);
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            animation: modalSlideIn 0.2s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -48%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
         /* Print styles */
         @media print {
             .no-print { display: none !important; }
@@ -578,32 +610,28 @@ HTMLHEAD
 
     <!-- Findings Section -->
     <section class="bg-gray-800 rounded-lg border border-gray-700 mb-8">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between p-4 border-b border-gray-700">
-            <h2 class="text-xl font-semibold text-white mb-2 md:mb-0">Bulgular</h2>
-            <div class="flex gap-2 no-print">
-                <button class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors" onclick="SecurityReport.expandAll()">Tümü Aç</button>
-                <button class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors" onclick="SecurityReport.collapseAll()">Tümü Kapat</button>
-            </div>
+        <div class="p-4 border-b border-gray-700">
+            <h2 class="text-xl font-semibold text-white">Bulgular</h2>
         </div>
 
         <!-- Tabs -->
         <div class="flex flex-wrap gap-1 p-4 border-b border-gray-700 no-print">
-            <button class="tab px-3 py-2 text-sm rounded bg-blue-600 text-white" data-severity="all">
-                Tümü <span class="badge ml-1 px-2 py-0.5 bg-blue-500 rounded-full text-xs">${TOTAL_FINDINGS:-0}</span>
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="all">
+                Tümü <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${TOTAL_FINDINGS:-0}</span>
             </button>
-            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600 text-gray-300" data-severity="critical">
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="critical">
                 Kritik <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${CRITICAL_COUNT:-0}</span>
             </button>
-            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600 text-gray-300" data-severity="high">
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="high">
                 Yüksek <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${HIGH_COUNT:-0}</span>
             </button>
-            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600 text-gray-300" data-severity="medium">
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="medium">
                 Orta <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${MEDIUM_COUNT:-0}</span>
             </button>
-            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600 text-gray-300" data-severity="low">
-                Düşük <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${LOW_COUNT:-0}</span>
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="low">
+                Düsük <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${LOW_COUNT:-0}</span>
             </button>
-            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 hover:bg-gray-600 text-gray-300" data-severity="info">
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="info">
                 Bilgi <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${INFO_COUNT:-0}</span>
             </button>
         </div>
@@ -665,11 +693,11 @@ EOF
         # Severity'yi normalize et
         case "$severity" in
             kritik|critical) severity="critical" ;;
-            yüksek|yuksek|high) severity="high" ;;
+            yüksek|high) severity="high" ;;
             orta|medium) severity="medium" ;;
-            düşük|dusuk|low) severity="low" ;;
+            düşük|low) severity="low" ;;
             bilgi|info) severity="info" ;;
-            geçti|gecti|pass) severity="pass" ;;
+            geçti|pass) severity="pass" ;;
         esac
 
         # Pass bulgularını atla (opsiyonel)
@@ -718,16 +746,48 @@ EOF
                         <td class="px-4 py-3">
 EOF
 
+        # Her satira modal butonu ekle (remediation olsun olmasin)
+        local rem_title rem_desc rem_steps rem_affected
         if [[ "$has_remediation" == "true" ]]; then
-            cat >> "$output_file" <<EOF
-                            <button class="btn-expand inline-flex items-center gap-1 px-3 py-1 text-sm bg-gray-700 hover:bg-blue-600 rounded text-gray-300 hover:text-white transition-colors" data-target="remediation-${finding_id}">
-                                <span class="btn-text">Çözüm</span>
-                                <span class="arrow text-xs">▼</span>
+            # Remediation verisini parse et
+            rem_title=$(echo "$remediation_data" | jq -r '.title // empty' 2>/dev/null)
+            rem_desc=$(echo "$remediation_data" | jq -r '.description // empty' 2>/dev/null)
+            rem_steps=$(echo "$remediation_data" | jq -r '.steps // empty' 2>/dev/null)
+            rem_affected=$(echo "$remediation_data" | jq -r '.affected // empty' 2>/dev/null)
+
+            # Fallback: JSON degilse direkt kullan
+            [[ -z "$rem_title" ]] && rem_title="$title"
+            [[ -z "$rem_desc" ]] && rem_desc="$description"
+            [[ -z "$rem_steps" ]] && rem_steps="$remediation_data"
+        else
+            # Remediation yoksa basit bilgi goster
+            rem_title="$title"
+            rem_desc="$description"
+            rem_steps="Bu bulgu için otomatik çözüm önerisi bulunmuyor. Manuel inceleme önerilir."
+            rem_affected=""
+        fi
+
+        # HTML escape ve base64 encode (özel karakterler için)
+        local encoded_title encoded_desc encoded_steps encoded_affected
+        encoded_title=$(echo -n "$rem_title" | base64 -w0)
+        encoded_desc=$(echo -n "$rem_desc" | base64 -w0)
+        encoded_steps=$(echo -n "$rem_steps" | base64 -w0)
+        encoded_affected=$(echo -n "$rem_affected" | base64 -w0)
+
+        cat >> "$output_file" <<EOF
+                            <button class="btn-modal inline-flex items-center gap-1 px-3 py-1 text-sm bg-gray-700 hover:bg-blue-600 rounded text-gray-300 hover:text-white transition-colors"
+                                    onclick="SecurityReport.openModal(this)"
+                                    data-title="${encoded_title}"
+                                    data-description="${encoded_desc}"
+                                    data-remediation="${encoded_steps}"
+                                    data-affected="${encoded_affected}"
+                                    data-severity="${severity}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>Detay</span>
                             </button>
 EOF
-        else
-            echo "                            <span class=\"text-gray-600\">-</span>" >> "$output_file"
-        fi
 
         cat >> "$output_file" <<EOF
                         </td>
@@ -793,6 +853,68 @@ EOF
             </div>
         </div>
     </footer>
+</div>
+
+<!-- Remediation Modal -->
+<div id="remediation-modal" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop -->
+    <div class="modal-backdrop absolute inset-0 bg-black/70" onclick="SecurityReport.closeModal()"></div>
+
+    <!-- Modal Content -->
+    <div class="modal-content absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-gray-700">
+            <div class="flex items-center gap-3">
+                <span id="modal-severity-icon"></span>
+                <h3 id="modal-title" class="text-lg font-semibold text-white"></h3>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="modal-severity-badge" class="px-2 py-1 text-xs font-medium rounded"></span>
+                <button onclick="SecurityReport.closeModal()" class="text-gray-400 hover:text-white transition-colors p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-6">
+            <!-- Açıklama -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-400 uppercase mb-2">Açıklama</h4>
+                <p id="modal-description" class="text-gray-300"></p>
+            </div>
+
+            <!-- Etkilenen -->
+            <div id="modal-affected-section">
+                <h4 class="text-sm font-medium text-gray-400 uppercase mb-2">Etkilenen</h4>
+                <code id="modal-affected" class="block bg-gray-900 px-3 py-2 rounded text-blue-400 font-mono text-sm"></code>
+            </div>
+
+            <!-- Çözüm Adımları -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-400 uppercase mb-2">Çözüm Adımları</h4>
+                <pre id="modal-remediation" class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-gray-300 whitespace-pre-wrap overflow-x-auto"></pre>
+                <button id="modal-copy-btn" onclick="SecurityReport.copyRemediation()" class="mt-3 px-4 py-2 bg-gray-700 hover:bg-blue-600 rounded text-sm text-gray-300 hover:text-white transition-colors inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                    </svg>
+                    <span>Kopyala</span>
+                </button>
+            </div>
+
+            <!-- Uyari -->
+            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <p class="text-yellow-200 text-sm">Değişiklik yapmadan önce sisteminizin yedeğini almanız önerilir.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>

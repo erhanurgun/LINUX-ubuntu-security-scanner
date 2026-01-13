@@ -1,6 +1,6 @@
 /**
  * Security Scanner - HTML Report Interactive Features
- * Tabs, Search, Sort, Copy-to-clipboard, Collapsible panels
+ * Tabs, Search, Sort, Copy-to-clipboard, Modal, Collapsible panels
  */
 
 const SecurityReport = {
@@ -11,6 +11,7 @@ const SecurityReport = {
         this.initSort();
         this.initCopyButtons();
         this.initExpandButtons();
+        this.initModal();
         this.updateCounts();
     },
 
@@ -18,6 +19,11 @@ const SecurityReport = {
     initTabs() {
         const tabs = document.querySelectorAll('.tab');
         const rows = document.querySelectorAll('.finding-row');
+
+        // Baslangicta ilk tab'a active ekle
+        if (tabs.length > 0) {
+            tabs[0].classList.add('active');
+        }
 
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -35,11 +41,11 @@ const SecurityReport = {
     // Filter findings by severity
     filterBySeverity(severity) {
         const rows = document.querySelectorAll('.finding-row');
+        const remediationRows = document.querySelectorAll('.remediation-row');
         let visibleCount = 0;
 
         rows.forEach(row => {
             const rowSeverity = row.dataset.severity;
-            const matchesSearch = row.style.display !== 'none-search';
 
             if (severity === 'all' || rowSeverity === severity) {
                 row.style.display = '';
@@ -48,6 +54,16 @@ const SecurityReport = {
             } else {
                 row.style.display = 'none';
                 row.classList.add('filtered-severity');
+            }
+        });
+
+        // Remediation satirlarini da filtrele
+        remediationRows.forEach(row => {
+            const rowSeverity = row.dataset.severity;
+            if (severity === 'all' || rowSeverity === severity) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
             }
         });
 
@@ -107,9 +123,9 @@ const SecurityReport = {
 
         if (show && !noResults) {
             noResults = document.createElement('div');
-            noResults.className = 'no-results';
+            noResults.className = 'no-results text-center py-8 text-gray-500';
             const p = document.createElement('p');
-            p.textContent = 'Arama kriterlerine uygun bulgu bulunamadı.';
+            p.textContent = 'Arama kriterlerine uygun bulgu bulunamadi.';
             noResults.appendChild(p);
             const table = document.querySelector('.findings-table');
             if (table && table.parentNode) {
@@ -211,7 +227,7 @@ const SecurityReport = {
                     if (iconSpan) {
                         iconSpan.textContent = '[ok]';
                     }
-                    btn.setAttribute('title', 'Kopyalandı!');
+                    btn.setAttribute('title', 'Kopyalandi!');
 
                     setTimeout(() => {
                         btn.classList.remove('copied');
@@ -253,14 +269,16 @@ const SecurityReport = {
 
                 if (isExpanded) {
                     panel.classList.remove('show');
+                    panel.classList.add('hidden');
                     btn.classList.remove('expanded');
                     if (textSpan) textSpan.textContent = 'Çözüm';
-                    if (arrowSpan) arrowSpan.textContent = '▼';
+                    if (arrowSpan) arrowSpan.textContent = String.fromCharCode(9660);
                 } else {
+                    panel.classList.remove('hidden');
                     panel.classList.add('show');
                     btn.classList.add('expanded');
                     if (textSpan) textSpan.textContent = 'Kapat';
-                    if (arrowSpan) arrowSpan.textContent = '▲';
+                    if (arrowSpan) arrowSpan.textContent = String.fromCharCode(9650);
                 }
             });
         });
@@ -289,6 +307,7 @@ const SecurityReport = {
     // Expand all panels
     expandAll() {
         document.querySelectorAll('.remediation-panel').forEach(panel => {
+            panel.classList.remove('hidden');
             panel.classList.add('show');
         });
         document.querySelectorAll('.btn-expand').forEach(btn => {
@@ -296,7 +315,7 @@ const SecurityReport = {
             const textSpan = btn.querySelector('.btn-text');
             const arrowSpan = btn.querySelector('.arrow');
             if (textSpan) textSpan.textContent = 'Kapat';
-            if (arrowSpan) arrowSpan.textContent = '▲';
+            if (arrowSpan) arrowSpan.textContent = String.fromCharCode(9650);
         });
     },
 
@@ -304,13 +323,162 @@ const SecurityReport = {
     collapseAll() {
         document.querySelectorAll('.remediation-panel').forEach(panel => {
             panel.classList.remove('show');
+            panel.classList.add('hidden');
         });
         document.querySelectorAll('.btn-expand').forEach(btn => {
             btn.classList.remove('expanded');
             const textSpan = btn.querySelector('.btn-text');
             const arrowSpan = btn.querySelector('.arrow');
             if (textSpan) textSpan.textContent = 'Çözüm';
-            if (arrowSpan) arrowSpan.textContent = '▼';
+            if (arrowSpan) arrowSpan.textContent = String.fromCharCode(9660);
+        });
+    },
+
+    // === MODAL FUNCTIONS ===
+
+    // Initialize modal (ESC key listener)
+    initModal() {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeModal();
+            }
+        });
+    },
+
+    // Base64 decode helper
+    decodeBase64(str) {
+        try {
+            return decodeURIComponent(escape(atob(str)));
+        } catch (e) {
+            return str;
+        }
+    },
+
+    // Open modal with finding data
+    openModal(button) {
+        const modal = document.getElementById('remediation-modal');
+        if (!modal) return;
+
+        // Get data from button attributes
+        const title = this.decodeBase64(button.dataset.title || '');
+        const description = this.decodeBase64(button.dataset.description || '');
+        const remediation = this.decodeBase64(button.dataset.remediation || '');
+        const affected = this.decodeBase64(button.dataset.affected || '');
+        const severity = button.dataset.severity || 'info';
+
+        // Fill modal content using textContent (XSS safe)
+        const titleEl = document.getElementById('modal-title');
+        const descEl = document.getElementById('modal-description');
+        const remEl = document.getElementById('modal-remediation');
+        const affectedEl = document.getElementById('modal-affected');
+        const affectedSection = document.getElementById('modal-affected-section');
+
+        if (titleEl) titleEl.textContent = title;
+        if (descEl) descEl.textContent = description;
+        if (remEl) remEl.textContent = remediation;
+        if (affectedEl) affectedEl.textContent = affected || '-';
+
+        // Hide affected section if empty
+        if (affectedSection) {
+            affectedSection.style.display = affected ? '' : 'none';
+        }
+
+        // Set severity badge
+        this.setSeverityBadge(severity);
+
+        // Show modal
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    },
+
+    // Close modal
+    closeModal() {
+        const modal = document.getElementById('remediation-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    },
+
+    // Set severity badge color
+    setSeverityBadge(severity) {
+        const badge = document.getElementById('modal-severity-badge');
+        const icon = document.getElementById('modal-severity-icon');
+
+        if (!badge) return;
+
+        // Remove old classes
+        badge.className = 'px-2 py-1 text-xs font-medium rounded uppercase';
+
+        // Severity labels in Turkish
+        const labels = {
+            critical: 'Kritik',
+            high: 'Yuksek',
+            medium: 'Orta',
+            low: 'Dusuk',
+            info: 'Bilgi'
+        };
+
+        // Severity colors
+        const colors = {
+            critical: 'bg-red-500/20 text-red-400 border border-red-500/30',
+            high: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
+            medium: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+            low: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+            info: 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+        };
+
+        badge.className += ' ' + (colors[severity] || colors.info);
+        badge.textContent = labels[severity] || 'Bilgi';
+
+        // Set icon color
+        if (icon) {
+            const iconColors = {
+                critical: 'text-red-500',
+                high: 'text-orange-500',
+                medium: 'text-yellow-500',
+                low: 'text-blue-500',
+                info: 'text-gray-500'
+            };
+            icon.className = 'w-6 h-6 ' + (iconColors[severity] || iconColors.info);
+        }
+    },
+
+    // Copy remediation steps to clipboard
+    copyRemediation() {
+        const remEl = document.getElementById('modal-remediation');
+        const copyBtn = document.getElementById('modal-copy-btn');
+
+        if (!remEl) return;
+
+        const text = remEl.textContent.trim();
+
+        navigator.clipboard.writeText(text).then(() => {
+            // Visual feedback
+            if (copyBtn) {
+                const span = copyBtn.querySelector('span');
+                const originalText = span ? span.textContent : '';
+                if (span) span.textContent = 'Kopyalandi!';
+
+                copyBtn.classList.add('bg-green-600');
+                copyBtn.classList.remove('bg-gray-700');
+
+                setTimeout(() => {
+                    if (span) span.textContent = originalText || 'Kopyala';
+                    copyBtn.classList.remove('bg-green-600');
+                    copyBtn.classList.add('bg-gray-700');
+                }, 2000);
+            }
+        }).catch(() => {
+            // Fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
         });
     }
 };
