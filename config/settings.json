@@ -11,11 +11,14 @@
   "reporting": {
     "format": "terminal",
     "organize_by_date": true,
-    "retention_days": 90
+    "retention_days": 90,
+    "log_retention_days": 30
   },
   "notifications": {
     "desktop": true,
     "email": false,
+    "email_to": "",
+    "webhook": "",
     "on_severity": ["critical", "high"]
   },
   "fim": {
@@ -41,12 +44,31 @@
       "/sys",
       "/dev",
       "/run",
-      "/snap"
+      "/snap",
+      "node_modules",
+      ".cache",
+      ".local/share/Trash",
+      ".npm",
+      ".yarn"
+    ]
+  },
+  "exit_codes": {
+    "critical": 2,
+    "high": 1,
+    "success": 0
+  },
+  "gnome": {
+    "trusted_extensions": [
+      "ubuntu-dock@ubuntu.com",
+      "ubuntu-appindicators@ubuntu.com",
+      "tiling-assistant@ubuntu.com",
+      "ding@rastersoft.com"
     ]
   },
   "interface": {
     "language": "tr",
     "color": true,
-    "verbose": false
+    "verbose": false,
+    "debug": false
   }
 }
