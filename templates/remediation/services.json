@@ -1,0 +1,154 @@
+{
+  "mysql_no_password": {
+    "title": "MySQL Root Şifresi Ayarlanmamış",
+    "match_pattern": "MySQL.*root.*password|MySQL.*şifre|MySQL.*authentication",
+    "severity": "critical",
+    "impact": "Saldırganlar yerel erişimle tüm veritabanlarını okuyabilir/değiştirebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "MySQL güvenlik sihirbazını çalıştırın",
+        "command": "sudo mysql_secure_installation",
+        "explanation": "Bu interaktif araç MySQL'i güvenli hale getirmenize yardımcı olur"
+      },
+      {
+        "order": 2,
+        "instruction": "Güçlü bir root şifresi belirleyin",
+        "command": null,
+        "tip": "En az 12 karakter, büyük/küçük harf, rakam ve sembol kullanın"
+      },
+      {
+        "order": 3,
+        "instruction": "Anonim kullanıcıları kaldırın",
+        "command": null,
+        "note": "Sorulduğunda 'Y' yanıtı verin"
+      },
+      {
+        "order": 4,
+        "instruction": "Uzaktan root girişini engelleyin",
+        "command": null,
+        "note": "Sorulduğunda 'Y' yanıtı verin"
+      }
+    ],
+    "verification": {
+      "command": "sudo mysql -u root -p -e 'SELECT 1'",
+      "expected": "Şifre isteyecek ve doğru şifreyle başarılı olacak"
+    },
+    "references": [
+      "https://dev.mysql.com/doc/refman/8.0/en/mysql-secure-installation.html"
+    ]
+  },
+  "mysql_open_port": {
+    "title": "MySQL Tüm Arayüzlerde Açık",
+    "match_pattern": "MySQL.*3306.*açık|MySQL.*tüm.*arayüz",
+    "severity": "high",
+    "impact": "Uzaktan veritabanına erişim mümkün olabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "MySQL yapılandırma dosyasını düzenleyin",
+        "command": "sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf"
+      },
+      {
+        "order": 2,
+        "instruction": "bind-address değerini localhost olarak ayarlayın",
+        "command": "bind-address = 127.0.0.1",
+        "note": "Bu satırı bulun veya ekleyin"
+      },
+      {
+        "order": 3,
+        "instruction": "MySQL servisini yeniden başlatın",
+        "command": "sudo systemctl restart mysql"
+      }
+    ],
+    "verification": {
+      "command": "ss -tlnp | grep 3306",
+      "expected": "127.0.0.1:3306 göstermelidir"
+    }
+  },
+  "redis_no_auth": {
+    "title": "Redis Authentication Yapılandırılmamış",
+    "match_pattern": "Redis.*auth|Redis.*password|Redis.*şifre",
+    "severity": "high",
+    "impact": "Yetkisiz erişim ile veri okunabilir veya değiştirilebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Redis yapılandırma dosyasını düzenleyin",
+        "command": "sudo nano /etc/redis/redis.conf"
+      },
+      {
+        "order": 2,
+        "instruction": "requirepass direktifini bulun ve ayarlayın",
+        "command": "requirepass GUCLU_SIFRENIZ",
+        "tip": "GUCLU_SIFRENIZ yerine güçlü bir şifre yazın"
+      },
+      {
+        "order": 3,
+        "instruction": "Redis servisini yeniden başlatın",
+        "command": "sudo systemctl restart redis"
+      }
+    ],
+    "verification": {
+      "command": "redis-cli ping",
+      "expected": "NOAUTH Authentication required. hatası alacaksınız"
+    }
+  },
+  "telnet_enabled": {
+    "title": "Telnet Servisi Aktif",
+    "match_pattern": "telnet.*aktif|telnet.*açık|telnet.*enabled",
+    "severity": "critical",
+    "impact": "Telnet şifreleri düz metin olarak iletir, dinlenebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Telnet servisini durdurun",
+        "command": "sudo systemctl stop telnet.socket"
+      },
+      {
+        "order": 2,
+        "instruction": "Telnet servisini devre dışı bırakın",
+        "command": "sudo systemctl disable telnet.socket"
+      },
+      {
+        "order": 3,
+        "instruction": "Bunun yerine SSH kullanın",
+        "command": "sudo apt install openssh-server",
+        "note": "SSH güvenli uzaktan erişim sağlar"
+      }
+    ],
+    "verification": {
+      "command": "systemctl is-active telnet.socket",
+      "expected": "inactive dönmelidir"
+    }
+  },
+  "ftp_enabled": {
+    "title": "FTP Servisi Aktif",
+    "match_pattern": "ftp.*aktif|ftp.*açık|vsftpd",
+    "severity": "high",
+    "impact": "FTP şifreleri şifrelenmeden iletir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "SFTP veya SCP kullanmayı düşünün (SSH üzerinden)",
+        "command": null,
+        "note": "Daha güvenli alternatifler"
+      },
+      {
+        "order": 2,
+        "instruction": "FTP zorunluysa TLS/SSL etkinleştirin",
+        "command": "sudo nano /etc/vsftpd.conf"
+      },
+      {
+        "order": 3,
+        "instruction": "SSL ayarlarını ekleyin",
+        "command": "ssl_enable=YES\nforce_local_logins_ssl=YES\nforce_local_data_ssl=YES",
+        "note": "Bu satırları yapılandırmaya ekleyin"
+      }
+    ],
+    "verification": {
+      "command": "cat /etc/vsftpd.conf | grep ssl_enable",
+      "expected": "ssl_enable=YES göstermelidir"
+    }
+  }
+}

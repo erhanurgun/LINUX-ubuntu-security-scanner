@@ -1,0 +1,399 @@
+#!/bin/bash
+#
+# Security Scanner v0.1.0
+# Ubuntu Sistem Guvenlik Tarayicisi
+# https://github.com/erhanurgun
+#
+# Kullanim: security-scanner [SECENEKLER]
+#
+
+set -uo pipefail
+
+# === VERSIYON ===
+readonly SCANNER_VERSION="0.1.0"
+
+# === PORTABLE PATH DETECTION ===
+detect_scanner_paths() {
+    local script_path
+    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local repo_root="${script_path%/bin}"
+
+    # Repository'den mi calisiyor? (install.sh ve README.md varsa = portable mod)
+    if [[ -f "${repo_root}/install.sh" || -f "${repo_root}/README.md" ]]; then
+        SCANNER_MODE="portable"
+        SCANNER_DIR="$repo_root"
+        REPORT_BASE="${SCANNER_DIR}/.reports"
+    elif [[ -d "${HOME}/.local/share/security-scanner" ]]; then
+        # Installed mod
+        SCANNER_MODE="installed"
+        SCANNER_DIR="${HOME}/.local/share/security-scanner"
+        REPORT_BASE="${SCANNER_DIR}/reports"
+    else
+        echo "HATA: Security Scanner kurulumu bulunamadi" >&2
+        echo "install.sh calistirin veya repository dizininden kullanin" >&2
+        exit 1
+    fi
+
+    # Ortak path'ler
+    LIB_DIR="${SCANNER_DIR}/lib"
+    MODULES_DIR="${SCANNER_DIR}/modules"
+    DATA_DIR="${SCANNER_DIR}/data"
+    LOG_DIR="${SCANNER_DIR}/logs"
+    CONFIG_DIR="${SCANNER_DIR}/config"
+    TEMPLATES_DIR="${SCANNER_DIR}/templates"
+    CONFIG_FILE="${CONFIG_DIR}/scanner.conf"
+    LOG_FILE="${LOG_DIR}/scanner.log"
+
+    # Tarihe gore organize raporlar
+    local today
+    today=$(date +%Y-%m-%d)
+    REPORT_DIR="${REPORT_BASE}/${today}"
+}
+
+# Path'leri tespit et
+detect_scanner_paths
+
+# === VARSAYILAN DEGERLER ===
+SCAN_MODE="full"
+SILENT_MODE=false
+DEBUG=false
+REPORT_FORMAT="terminal"
+SPECIFIC_MODULES=""
+ENABLED_MODULES="all"
+DISABLED_MODULES=""
+MIN_SEVERITY="info"      # info, low, medium, high, critical
+ONLY_SEVERITY=""         # Bossa filtre yok, doluysa sadece o seviye
+
+# === YARDIM ===
+show_help() {
+    cat << EOF
+Security Scanner v${SCANNER_VERSION}
+Ubuntu Sistem Guvenlik Tarayicisi
+
+KULLANIM:
+    security-scanner [SECENEKLER]
+
+TEMEL SECENEKLER:
+    -h, --help              Bu yardim mesajini goster
+    -v, --version           Versiyon bilgisini goster
+    -q, --quick             Hizli tarama (sadece kritik kontroller)
+    -s, --silent            Sessiz mod (sadece sonuc)
+
+MODUL SECENEKLER:
+    -m, --module <isim>     Belirli modulu calistir
+    --modules <liste>       Virgulle ayrilmis modul listesi
+    --list-modules          Mevcut modulleri listele
+    --enable <moduller>     Sadece belirtilen modulleri etkinlestir
+    --disable <moduller>    Belirtilen modulleri devre disi birak
+
+RAPORLAMA:
+    -f, --format <format>   Rapor formatı: terminal, json, html
+                            Birden fazla: --format "json,html"
+    -o, --output <dizin>    Rapor cikti dizini
+    --list-reports          Mevcut raporlari listele
+
+FILTRELEME:
+    --critical              Sadece kritik bulgulari goster
+    --high                  High ve ustu bulgulari goster
+    --medium                Medium ve ustu bulgulari goster
+    --low                   Low ve ustu bulgulari goster (varsayilan)
+    --min-severity <level>  Minimum seviye: critical, high, medium, low, info
+    --only <level>          Sadece belirtilen seviyeyi goster
+
+FIM (File Integrity Monitoring):
+    --fim-init              FIM baseline olustur
+    --fim-check             Degisiklikleri kontrol et
+    --fim-update            Baseline'i guncelle
+
+SISTEM:
+    --check-tools           Bagimliliklari kontrol et
+    --install-tools         Eksik araclari kur (sudo gerekli)
+    --cleanup               Eski raporlari temizle
+    -d, --debug             Debug modu
+    --info                  Calisma modu ve dizin bilgilerini goster
+
+ORNEKLER:
+    security-scanner                    Tam tarama (terminal cikti)
+    security-scanner --quick            Hizli tarama
+    security-scanner -f json,html       JSON ve HTML rapor olustur
+    security-scanner -m 05-network      Sadece ag modulunu calistir
+    security-scanner --high             Sadece high+ bulgulari goster
+    security-scanner --only critical    Sadece kritik bulgulari goster
+    security-scanner --fim-init         Baseline olustur
+
+Mod: ${SCANNER_MODE}
+Dizin: ${SCANNER_DIR}
+Raporlar: ${REPORT_BASE}
+
+Daha fazla bilgi: https://github.com/erhanurgun
+EOF
+}
+
+show_version() {
+    echo "Security Scanner v${SCANNER_VERSION}"
+    echo "Bash ${BASH_VERSION}"
+    echo ""
+    echo "Calisma Modu: ${SCANNER_MODE}"
+    echo "Scanner Dizini: ${SCANNER_DIR}"
+    echo "Rapor Dizini: ${REPORT_BASE}"
+    echo ""
+    echo "Bilesenler:"
+    command -v jq &>/dev/null && echo "  - jq: $(jq --version 2>&1)"
+    command -v clamscan &>/dev/null && echo "  - ClamAV: $(clamscan --version 2>&1 | head -1)"
+    command -v rkhunter &>/dev/null && echo "  - rkhunter: kurulu"
+    command -v chkrootkit &>/dev/null && echo "  - chkrootkit: kurulu"
+    command -v lynis &>/dev/null && echo "  - lynis: kurulu"
+}
+
+show_info() {
+    echo "Security Scanner v${SCANNER_VERSION}"
+    echo "=============================="
+    echo ""
+    echo "Calisma Modu:    ${SCANNER_MODE}"
+    echo "Scanner Dizini:  ${SCANNER_DIR}"
+    echo "Lib Dizini:      ${LIB_DIR}"
+    echo "Modul Dizini:    ${MODULES_DIR}"
+    echo "Config Dizini:   ${CONFIG_DIR}"
+    echo "Data Dizini:     ${DATA_DIR}"
+    echo "Log Dizini:      ${LOG_DIR}"
+    echo "Rapor Dizini:    ${REPORT_BASE}"
+    echo "Template Dizini: ${TEMPLATES_DIR}"
+    echo ""
+    echo "Moduller:"
+    ls -1 "${MODULES_DIR}"/*.sh 2>/dev/null | xargs -I {} basename {} .sh | while read m; do
+        echo "  - $m"
+    done
+}
+
+# === ARGUMAN PARSE ===
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -v|--version)
+                show_version
+                exit 0
+                ;;
+            --info)
+                show_info
+                exit 0
+                ;;
+            -q|--quick)
+                SCAN_MODE="quick"
+                shift
+                ;;
+            -s|--silent)
+                SILENT_MODE=true
+                shift
+                ;;
+            -d|--debug)
+                DEBUG=true
+                shift
+                ;;
+            -m|--module)
+                SCAN_MODE="specific"
+                SPECIFIC_MODULES="$2"
+                shift 2
+                ;;
+            --modules)
+                SCAN_MODE="specific"
+                SPECIFIC_MODULES="$2"
+                shift 2
+                ;;
+            --list-modules)
+                source "${LIB_DIR}/utils.sh"
+                source "${LIB_DIR}/core.sh"
+                list_modules
+                exit 0
+                ;;
+            --enable)
+                ENABLED_MODULES="$2"
+                shift 2
+                ;;
+            --disable)
+                DISABLED_MODULES="$2"
+                shift 2
+                ;;
+            -f|--format)
+                REPORT_FORMAT="$2"
+                shift 2
+                ;;
+            -o|--output)
+                REPORT_DIR="$2"
+                shift 2
+                ;;
+            --list-reports)
+                source "${LIB_DIR}/utils.sh"
+                source "${LIB_DIR}/reporting.sh"
+                list_reports
+                exit 0
+                ;;
+            --fim-init)
+                FIM_MODE="init"
+                SCAN_MODE="specific"
+                SPECIFIC_MODULES="10-fim"
+                shift
+                ;;
+            --fim-check)
+                FIM_MODE="check"
+                SCAN_MODE="specific"
+                SPECIFIC_MODULES="10-fim"
+                shift
+                ;;
+            --fim-update)
+                FIM_MODE="update"
+                SCAN_MODE="specific"
+                SPECIFIC_MODULES="10-fim"
+                shift
+                ;;
+            --check-tools)
+                source "${LIB_DIR}/utils.sh"
+                source "${LIB_DIR}/core.sh"
+                check_dependencies
+                exit $?
+                ;;
+            --install-tools)
+                source "${LIB_DIR}/utils.sh"
+                source "${LIB_DIR}/core.sh"
+                install_optional_tools
+                exit $?
+                ;;
+            --cleanup)
+                source "${LIB_DIR}/utils.sh"
+                source "${LIB_DIR}/reporting.sh"
+                cleanup_old_reports
+                echo "Temizlik tamamlandi."
+                exit 0
+                ;;
+            --critical)
+                MIN_SEVERITY="critical"
+                shift
+                ;;
+            --high)
+                MIN_SEVERITY="high"
+                shift
+                ;;
+            --medium)
+                MIN_SEVERITY="medium"
+                shift
+                ;;
+            --low)
+                MIN_SEVERITY="low"
+                shift
+                ;;
+            --min-severity)
+                MIN_SEVERITY="$2"
+                shift 2
+                ;;
+            --only)
+                ONLY_SEVERITY="$2"
+                shift 2
+                ;;
+            *)
+                echo "Bilinmeyen secenek: $1"
+                echo "Yardim icin: security-scanner --help"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# === BASLATMA ===
+initialize() {
+    # Dizinlerin var oldugundan emin ol
+    mkdir -p "$LOG_DIR" "$REPORT_DIR"/{json,html} "$DATA_DIR" "$CONFIG_DIR"
+
+    # Log dosyasini baslat
+    touch "$LOG_FILE"
+
+    # Kutuphaneleri yukle
+    if [[ ! -f "${LIB_DIR}/utils.sh" ]]; then
+        echo "HATA: Kutuphane dosyalari bulunamadi: ${LIB_DIR}"
+        exit 1
+    fi
+
+    source "${LIB_DIR}/utils.sh"
+    source "${LIB_DIR}/core.sh"
+    source "${LIB_DIR}/reporting.sh"
+
+    # Yapilandirmayi yukle
+    load_config
+    set_defaults
+
+    # Trap ayarla
+    trap cleanup EXIT
+
+    log_info "Security Scanner v${SCANNER_VERSION} baslatildi (mod: ${SCANNER_MODE})"
+}
+
+# === ANA FONKSIYON ===
+main() {
+    # Argumanlari parse et
+    parse_arguments "$@"
+
+    # Komut satiri argumanlarini sakla (config uzerine yazmasin)
+    local cli_report_format="$REPORT_FORMAT"
+    local cli_scan_mode="$SCAN_MODE"
+    local cli_specific_modules="$SPECIFIC_MODULES"
+    local cli_min_severity="$MIN_SEVERITY"
+    local cli_only_severity="$ONLY_SEVERITY"
+
+    # Baslat
+    initialize
+
+    # Komut satiri argumanlarini geri yukle (config'den oncelikli)
+    [[ "$cli_report_format" != "terminal" ]] && REPORT_FORMAT="$cli_report_format"
+    [[ -n "$cli_specific_modules" ]] && SPECIFIC_MODULES="$cli_specific_modules"
+    SCAN_MODE="$cli_scan_mode"
+    [[ "$cli_min_severity" != "info" ]] && MIN_SEVERITY="$cli_min_severity"
+    [[ -n "$cli_only_severity" ]] && ONLY_SEVERITY="$cli_only_severity"
+
+    # Export degiskenler
+    export SCANNER_DIR LIB_DIR MODULES_DIR DATA_DIR REPORT_DIR REPORT_BASE LOG_DIR CONFIG_DIR CONFIG_FILE LOG_FILE TEMPLATES_DIR
+    export SCAN_MODE SILENT_MODE DEBUG REPORT_FORMAT SPECIFIC_MODULES ENABLED_MODULES DISABLED_MODULES
+    export SCANNER_VERSION SCANNER_MODE MIN_SEVERITY ONLY_SEVERITY
+
+    # FIM modu varsa export et
+    [[ -n "${FIM_MODE:-}" ]] && export FIM_MODE
+
+    # Taramayi baslat
+    start_scan "$SCAN_MODE"
+
+    # Sonuclari topla
+    collect_results
+
+    # Ozet yazdir
+    if [[ "$SILENT_MODE" != "true" ]]; then
+        print_summary
+    fi
+
+    # Raporlari olustur
+    if [[ "$REPORT_FORMAT" != "terminal" ]]; then
+        generate_reports
+    fi
+
+    # Bildirim gonder
+    if [[ "${NOTIFY_DESKTOP:-true}" == "true" ]]; then
+        send_scan_notification
+    fi
+
+    # Eski raporlari temizle (haftalik)
+    if [[ $(date +%u) -eq 1 ]]; then  # Pazartesi
+        cleanup_old_reports
+    fi
+
+    # Cikis kodu
+    if [[ ${CRITICAL_COUNT:-0} -gt 0 ]]; then
+        exit 2
+    elif [[ ${HIGH_COUNT:-0} -gt 0 ]]; then
+        exit 1
+    fi
+
+    exit 0
+}
+
+# === CALISTIR ===
+main "$@"

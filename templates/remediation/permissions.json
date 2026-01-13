@@ -1,0 +1,223 @@
+{
+  "sudoers_unsafe": {
+    "title": "Güvenli Olmayan Sudoers Yapılandırması",
+    "match_pattern": "sudoers|NOPASSWD|sudo.*yapılandırma|visudo",
+    "severity": "high",
+    "impact": "Yetkisiz kullanıcılar root erişimi elde edebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Mevcut sudoers yapılandırmasını kontrol edin",
+        "command": "sudo cat /etc/sudoers"
+      },
+      {
+        "order": 2,
+        "instruction": "Sudoers dosyasını güvenli şekilde düzenleyin",
+        "command": "sudo visudo",
+        "note": "Asla doğrudan nano/vim ile düzenlemeyin!"
+      },
+      {
+        "order": 3,
+        "instruction": "NOPASSWD satırlarını kaldırın veya sınırlandırın",
+        "command": null,
+        "note": "NOPASSWD sadece çok özel durumlarda kullanılmalıdır"
+      },
+      {
+        "order": 4,
+        "instruction": "Sudoers.d klasöründeki dosyaları kontrol edin",
+        "command": "sudo ls -la /etc/sudoers.d/"
+      }
+    ],
+    "verification": {
+      "command": "sudo grep -r NOPASSWD /etc/sudoers /etc/sudoers.d/",
+      "expected": "Mümkünse hiçbir NOPASSWD satırı olmamalıdır"
+    }
+  },
+  "root_owned_user_files": {
+    "title": "Kullanıcı Dizininde Root Sahipli Dosyalar",
+    "match_pattern": "root.*owned|root.*sahip|home.*root",
+    "severity": "medium",
+    "impact": "Kullanıcı kendi dosyalarını değiştiremeyebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Root sahipli dosyaları bulun",
+        "command": "sudo find /home -user root -type f 2>/dev/null"
+      },
+      {
+        "order": 2,
+        "instruction": "Dosyaları doğru kullanıcıya atayın",
+        "command": "sudo chown KULLANICI:KULLANICI DOSYA_YOLU",
+        "note": "KULLANICI yerine home dizininin sahibini yazın"
+      },
+      {
+        "order": 3,
+        "instruction": "Tüm home dizinini toplu düzelt",
+        "command": "sudo chown -R KULLANICI:KULLANICI /home/KULLANICI/"
+      }
+    ],
+    "verification": {
+      "command": "find /home/KULLANICI -user root 2>/dev/null | wc -l",
+      "expected": "0 dönmelidir"
+    }
+  },
+  "cron_permissions": {
+    "title": "Cron Dosya İzinleri Yanlış",
+    "match_pattern": "cron.*izin|cron.*permission|crontab.*güvenlik",
+    "severity": "medium",
+    "impact": "Yetkisiz kullanıcılar zamanlanmış görevleri değiştirebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Cron dizin izinlerini kontrol edin",
+        "command": "ls -la /etc/cron*"
+      },
+      {
+        "order": 2,
+        "instruction": "Crontab dosyası izinlerini düzelt",
+        "command": "sudo chmod 600 /etc/crontab && sudo chown root:root /etc/crontab"
+      },
+      {
+        "order": 3,
+        "instruction": "Cron dizinlerini düzelt",
+        "command": "sudo chmod 700 /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly"
+      },
+      {
+        "order": 4,
+        "instruction": "Cron erişimini sınırlandırın",
+        "command": "sudo touch /etc/cron.allow && sudo chmod 600 /etc/cron.allow",
+        "note": "Sadece cron.allow'daki kullanıcılar cron kullanabilir"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a %U:%G' /etc/crontab",
+      "expected": "600 root:root"
+    }
+  },
+  "ssh_key_permissions": {
+    "title": "SSH Anahtar İzinleri Yanlış",
+    "match_pattern": "ssh.*key.*permission|ssh.*anahtar.*izin|\\.ssh.*izin",
+    "severity": "high",
+    "impact": "SSH anahtarları başkaları tarafından okunabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": ".ssh dizini izinlerini düzelt",
+        "command": "chmod 700 ~/.ssh"
+      },
+      {
+        "order": 2,
+        "instruction": "Özel anahtarları koru",
+        "command": "chmod 600 ~/.ssh/id_*",
+        "note": "id_rsa, id_ed25519 gibi özel anahtarlar"
+      },
+      {
+        "order": 3,
+        "instruction": "Açık anahtarları ayarla",
+        "command": "chmod 644 ~/.ssh/*.pub"
+      },
+      {
+        "order": 4,
+        "instruction": "authorized_keys izinlerini düzelt",
+        "command": "chmod 600 ~/.ssh/authorized_keys"
+      },
+      {
+        "order": 5,
+        "instruction": "known_hosts izinlerini düzelt",
+        "command": "chmod 644 ~/.ssh/known_hosts"
+      }
+    ],
+    "verification": {
+      "command": "ls -la ~/.ssh/",
+      "expected": "Dizin 700, özel anahtarlar 600, açık anahtarlar 644"
+    }
+  },
+  "script_injection_risk": {
+    "title": "PATH Dizinleri Yazılabilir",
+    "match_pattern": "PATH.*writable|PATH.*yazılabilir|path.*injection",
+    "severity": "critical",
+    "impact": "Saldırganlar zararlı script enjekte edebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "PATH'teki dizinleri kontrol edin",
+        "command": "echo $PATH | tr ':' '\\n' | xargs ls -ld"
+      },
+      {
+        "order": 2,
+        "instruction": "Yazılabilir dizinleri tespit edin",
+        "command": "echo $PATH | tr ':' '\\n' | xargs -I{} find {} -maxdepth 0 -perm -002 2>/dev/null"
+      },
+      {
+        "order": 3,
+        "instruction": "Yazma izinlerini kaldırın",
+        "command": "sudo chmod o-w DIZIN_YOLU",
+        "note": "DIZIN_YOLU yerine yazılabilir dizini yazın"
+      }
+    ],
+    "verification": {
+      "command": "echo $PATH | tr ':' '\\n' | xargs -I{} find {} -maxdepth 0 -perm -002 2>/dev/null | wc -l",
+      "expected": "0 dönmelidir"
+    }
+  },
+  "log_permissions": {
+    "title": "Log Dosyası İzinleri Yanlış",
+    "match_pattern": "log.*permission|log.*izin|/var/log.*izin",
+    "severity": "medium",
+    "impact": "Log dosyaları değiştirilebilir veya okunabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Log dizini izinlerini kontrol edin",
+        "command": "ls -la /var/log/"
+      },
+      {
+        "order": 2,
+        "instruction": "Auth log izinlerini düzelt",
+        "command": "sudo chmod 640 /var/log/auth.log && sudo chown syslog:adm /var/log/auth.log"
+      },
+      {
+        "order": 3,
+        "instruction": "Syslog izinlerini düzelt",
+        "command": "sudo chmod 640 /var/log/syslog && sudo chown syslog:adm /var/log/syslog"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a %U:%G' /var/log/auth.log /var/log/syslog",
+      "expected": "640 syslog:adm"
+    }
+  },
+  "user_in_sensitive_groups": {
+    "title": "Kullanıcı Hassas Gruplarda",
+    "match_pattern": "grup.*docker|grup.*lxd|grup.*disk|sensitive.*group",
+    "severity": "high",
+    "impact": "Bu gruplar root erişimi sağlayabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Kullanıcının gruplarını kontrol edin",
+        "command": "groups KULLANICI_ADI"
+      },
+      {
+        "order": 2,
+        "instruction": "Gerekli değilse docker grubundan çıkarın",
+        "command": "sudo gpasswd -d KULLANICI_ADI docker"
+      },
+      {
+        "order": 3,
+        "instruction": "Gerekli değilse lxd grubundan çıkarın",
+        "command": "sudo gpasswd -d KULLANICI_ADI lxd"
+      },
+      {
+        "order": 4,
+        "instruction": "Disk grubundan çıkarın (tehlikeli!)",
+        "command": "sudo gpasswd -d KULLANICI_ADI disk",
+        "note": "disk grubu doğrudan disk erişimi sağlar"
+      }
+    ],
+    "verification": {
+      "command": "groups KULLANICI_ADI",
+      "expected": "docker, lxd, disk gibi hassas gruplar olmamalı"
+    }
+  }
+}

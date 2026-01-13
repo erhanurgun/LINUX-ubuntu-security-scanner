@@ -1,0 +1,159 @@
+{
+  "firewall_disabled": {
+    "title": "Firewall Devre Dışı",
+    "match_pattern": "firewall.*devre.*dışı|ufw.*inactive|iptables.*boş",
+    "severity": "high",
+    "impact": "Tüm portlar dışa açık olabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "UFW firewall'u kurun (kurulu değilse)",
+        "command": "sudo apt install ufw"
+      },
+      {
+        "order": 2,
+        "instruction": "SSH bağlantısına izin verin (önce bunu yapın!)",
+        "command": "sudo ufw allow ssh",
+        "note": "Bu adımı atlamayın, yoksa bağlantınız kesilir!"
+      },
+      {
+        "order": 3,
+        "instruction": "Varsayılan olarak gelen trafiği engelleyin",
+        "command": "sudo ufw default deny incoming"
+      },
+      {
+        "order": 4,
+        "instruction": "Varsayılan olarak giden trafiğe izin verin",
+        "command": "sudo ufw default allow outgoing"
+      },
+      {
+        "order": 5,
+        "instruction": "UFW'yi etkinleştirin",
+        "command": "sudo ufw enable"
+      }
+    ],
+    "verification": {
+      "command": "sudo ufw status",
+      "expected": "Status: active ve kurallar listesi"
+    }
+  },
+  "ip_forwarding_enabled": {
+    "title": "IP Forwarding Aktif",
+    "match_pattern": "ip.*forward.*aktif|ip_forward.*1",
+    "severity": "medium",
+    "impact": "Sistem router olarak kullanılabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Sysctl yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/sysctl.conf"
+      },
+      {
+        "order": 2,
+        "instruction": "IP forwarding'i devre dışı bırakın",
+        "command": "net.ipv4.ip_forward = 0\nnet.ipv6.conf.all.forwarding = 0"
+      },
+      {
+        "order": 3,
+        "instruction": "Değişiklikleri uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "sysctl net.ipv4.ip_forward",
+      "expected": "net.ipv4.ip_forward = 0"
+    }
+  },
+  "open_port_unknown": {
+    "title": "Bilinmeyen Açık Port",
+    "match_pattern": "bilinmeyen.*port|unknown.*port|dinleyen.*servis",
+    "severity": "medium",
+    "impact": "Potansiyel güvenlik açığı veya backdoor",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Portu kullanan süreci belirleyin",
+        "command": "sudo ss -tlnp | grep :PORT_NUMARASI"
+      },
+      {
+        "order": 2,
+        "instruction": "Sürecin ne olduğunu araştırın",
+        "command": "ps aux | grep SUREC_ID"
+      },
+      {
+        "order": 3,
+        "instruction": "Gerekli değilse servisi durdurun",
+        "command": "sudo systemctl stop SERVIS_ADI"
+      },
+      {
+        "order": 4,
+        "instruction": "Firewall'da portu engelleyin",
+        "command": "sudo ufw deny PORT_NUMARASI"
+      }
+    ],
+    "verification": {
+      "command": "ss -tlnp | grep :PORT_NUMARASI",
+      "expected": "Hiçbir sonuç dönmemelidir"
+    }
+  },
+  "smtp_open": {
+    "title": "SMTP Portu Dışa Açık",
+    "match_pattern": "SMTP.*25.*açık|mail.*relay",
+    "severity": "high",
+    "impact": "Spam gönderimi için kullanılabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "SMTP servisinin gerekli olup olmadığını değerlendirin",
+        "command": null,
+        "note": "Mail sunucusu değilse kapatın"
+      },
+      {
+        "order": 2,
+        "instruction": "Sadece localhost'tan erişime izin verin",
+        "command": "sudo nano /etc/postfix/main.cf"
+      },
+      {
+        "order": 3,
+        "instruction": "inet_interfaces değerini localhost yapın",
+        "command": "inet_interfaces = localhost"
+      },
+      {
+        "order": 4,
+        "instruction": "Postfix'i yeniden başlatın",
+        "command": "sudo systemctl restart postfix"
+      }
+    ],
+    "verification": {
+      "command": "ss -tlnp | grep :25",
+      "expected": "127.0.0.1:25 veya hiçbir sonuç"
+    }
+  },
+  "icmp_redirect_enabled": {
+    "title": "ICMP Redirect Aktif",
+    "match_pattern": "ICMP.*redirect|icmp.*yönlendirme",
+    "severity": "low",
+    "impact": "Trafik yönlendirme saldırılarına açık",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Sysctl yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/sysctl.conf"
+      },
+      {
+        "order": 2,
+        "instruction": "ICMP redirect'leri devre dışı bırakın",
+        "command": "net.ipv4.conf.all.accept_redirects = 0\nnet.ipv4.conf.default.accept_redirects = 0\nnet.ipv4.conf.all.send_redirects = 0"
+      },
+      {
+        "order": 3,
+        "instruction": "Değişiklikleri uygulayın",
+        "command": "sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "sysctl net.ipv4.conf.all.accept_redirects",
+      "expected": "0 değeri"
+    }
+  }
+}

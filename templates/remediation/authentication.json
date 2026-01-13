@@ -1,0 +1,200 @@
+{
+  "ssh_root_login": {
+    "title": "SSH Root Girişi Aktif",
+    "match_pattern": "SSH.*root.*login|PermitRootLogin.*yes|root.*SSH",
+    "severity": "high",
+    "impact": "Saldırganlar doğrudan root hesabını hedef alabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "SSH yapılandırma dosyasını düzenleyin",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "order": 2,
+        "instruction": "PermitRootLogin değerini no olarak değiştirin",
+        "command": "PermitRootLogin no",
+        "note": "Bu satırı bulun veya ekleyin"
+      },
+      {
+        "order": 3,
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      }
+    ],
+    "verification": {
+      "command": "grep PermitRootLogin /etc/ssh/sshd_config",
+      "expected": "PermitRootLogin no göstermelidir"
+    }
+  },
+  "ssh_password_auth": {
+    "title": "SSH Şifre Doğrulaması Aktif",
+    "match_pattern": "SSH.*password.*auth|PasswordAuthentication.*yes",
+    "severity": "medium",
+    "impact": "Brute force saldırılarına açık olabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Öncelikle SSH anahtar çifti oluşturun",
+        "command": "ssh-keygen -t ed25519 -C 'email@ornek.com'"
+      },
+      {
+        "order": 2,
+        "instruction": "Açık anahtarı sunucuya kopyalayın",
+        "command": "ssh-copy-id kullanici@sunucu"
+      },
+      {
+        "order": 3,
+        "instruction": "Anahtar girişinin çalıştığını doğrulayın",
+        "command": "ssh kullanici@sunucu",
+        "note": "Şifre sormadan bağlantı kurulmalıdır"
+      },
+      {
+        "order": 4,
+        "instruction": "SSH yapılandırmasında şifre girişini kapatın",
+        "command": "sudo nano /etc/ssh/sshd_config"
+      },
+      {
+        "order": 5,
+        "instruction": "PasswordAuthentication'ı no yapın",
+        "command": "PasswordAuthentication no"
+      },
+      {
+        "order": 6,
+        "instruction": "SSH servisini yeniden başlatın",
+        "command": "sudo systemctl restart sshd"
+      }
+    ],
+    "verification": {
+      "command": "grep PasswordAuthentication /etc/ssh/sshd_config",
+      "expected": "PasswordAuthentication no göstermelidir"
+    }
+  },
+  "weak_password_policy": {
+    "title": "Zayıf Şifre Politikası",
+    "match_pattern": "şifre.*uzunluk.*düşük|password.*length|MINLEN",
+    "severity": "medium",
+    "impact": "Kullanıcılar zayıf şifreler oluşturabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "libpam-pwquality paketini kurun",
+        "command": "sudo apt install libpam-pwquality"
+      },
+      {
+        "order": 2,
+        "instruction": "Şifre kalitesi yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/security/pwquality.conf"
+      },
+      {
+        "order": 3,
+        "instruction": "Minimum şifre uzunluğunu ayarlayın",
+        "command": "minlen = 12",
+        "note": "En az 12 karakter önerilir"
+      },
+      {
+        "order": 4,
+        "instruction": "Karakter çeşitliliğini zorunlu kılın",
+        "command": "dcredit = -1\nucredit = -1\nlcredit = -1\nocredit = -1",
+        "note": "Her türden en az 1 karakter gerektirir"
+      }
+    ],
+    "verification": {
+      "command": "grep minlen /etc/security/pwquality.conf",
+      "expected": "minlen = 12 veya daha yüksek"
+    }
+  },
+  "account_lockout_missing": {
+    "title": "Hesap Kilitleme Yapılandırılmamış",
+    "match_pattern": "hesap.*kilitle|account.*lock|faillock|pam_tally",
+    "severity": "medium",
+    "impact": "Brute force saldırılarına karşı koruma yok",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "PAM yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/pam.d/common-auth"
+      },
+      {
+        "order": 2,
+        "instruction": "Faillock modülünü etkinleştirin",
+        "command": "auth required pam_faillock.so preauth silent deny=5 unlock_time=900",
+        "note": "Bu satırı dosyanın başına ekleyin"
+      },
+      {
+        "order": 3,
+        "instruction": "Başarısız giriş sonrası da faillock ekleyin",
+        "command": "auth [default=die] pam_faillock.so authfail deny=5 unlock_time=900"
+      }
+    ],
+    "verification": {
+      "command": "grep pam_faillock /etc/pam.d/common-auth",
+      "expected": "pam_faillock satırları göstermelidir"
+    }
+  },
+  "fail2ban_missing": {
+    "title": "Fail2ban Kurulu Değil",
+    "match_pattern": "fail2ban.*kurulu.*değil|fail2ban.*çalışmıyor",
+    "severity": "medium",
+    "impact": "Otomatik IP engelleme yok",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Fail2ban paketini kurun",
+        "command": "sudo apt install fail2ban"
+      },
+      {
+        "order": 2,
+        "instruction": "Yerel yapılandırma dosyası oluşturun",
+        "command": "sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local"
+      },
+      {
+        "order": 3,
+        "instruction": "SSH korumasını etkinleştirin",
+        "command": "sudo nano /etc/fail2ban/jail.local"
+      },
+      {
+        "order": 4,
+        "instruction": "sshd jail'ini etkinleştirin",
+        "command": "[sshd]\nenabled = true\nport = ssh\nfilter = sshd\nlogpath = /var/log/auth.log\nmaxretry = 5\nbantime = 3600"
+      },
+      {
+        "order": 5,
+        "instruction": "Fail2ban servisini başlatın",
+        "command": "sudo systemctl enable --now fail2ban"
+      }
+    ],
+    "verification": {
+      "command": "sudo fail2ban-client status sshd",
+      "expected": "Aktif jail ve engellenen IP bilgisi"
+    }
+  },
+  "empty_password": {
+    "title": "Boş Şifreli Hesap Tespit Edildi",
+    "match_pattern": "boş.*şifre|empty.*password|şifresi.*yok",
+    "severity": "critical",
+    "impact": "Şifresiz giriş mümkün",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Boş şifreli hesapları listeleyin",
+        "command": "sudo awk -F: '($2 == \"\") {print $1}' /etc/shadow"
+      },
+      {
+        "order": 2,
+        "instruction": "Her hesap için şifre belirleyin",
+        "command": "sudo passwd KULLANICI_ADI",
+        "note": "KULLANICI_ADI yerine gerçek kullanıcı adını yazın"
+      },
+      {
+        "order": 3,
+        "instruction": "Veya hesabı kilitleyin",
+        "command": "sudo passwd -l KULLANICI_ADI"
+      }
+    ],
+    "verification": {
+      "command": "sudo awk -F: '($2 == \"\") {print $1}' /etc/shadow",
+      "expected": "Hiçbir sonuç dönmemelidir"
+    }
+  }
+}

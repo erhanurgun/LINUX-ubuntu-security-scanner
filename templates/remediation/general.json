@@ -1,0 +1,298 @@
+{
+  "outdated_packages": {
+    "title": "Güncellenmemiş Paketler Var",
+    "match_pattern": "güncelleme.*bekleyen|update.*available|outdated.*package|paket.*eski",
+    "severity": "high",
+    "impact": "Bilinen güvenlik açıkları sisteminizde mevcut olabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Paket listesini güncelleyin",
+        "command": "sudo apt update"
+      },
+      {
+        "order": 2,
+        "instruction": "Güvenlik güncellemelerini görün",
+        "command": "apt list --upgradable"
+      },
+      {
+        "order": 3,
+        "instruction": "Tüm paketleri güncelleyin",
+        "command": "sudo apt upgrade -y"
+      },
+      {
+        "order": 4,
+        "instruction": "Tam sistem yükseltmesi (gerekirse)",
+        "command": "sudo apt full-upgrade -y",
+        "note": "Bu komut gereksiz paketleri de kaldırabilir"
+      }
+    ],
+    "verification": {
+      "command": "apt list --upgradable 2>/dev/null | wc -l",
+      "expected": "1 (sadece başlık satırı) dönmelidir"
+    }
+  },
+  "kernel_outdated": {
+    "title": "Kernel Sürümü Eski",
+    "match_pattern": "kernel.*eski|kernel.*outdated|kernel.*update",
+    "severity": "high",
+    "impact": "Kernel seviyesinde güvenlik açıkları mevcut olabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Mevcut kernel sürümünü kontrol edin",
+        "command": "uname -r"
+      },
+      {
+        "order": 2,
+        "instruction": "Mevcut kernel paketlerini görün",
+        "command": "apt list --installed | grep linux-image"
+      },
+      {
+        "order": 3,
+        "instruction": "Kernel güncellemesi yapın",
+        "command": "sudo apt update && sudo apt install linux-generic"
+      },
+      {
+        "order": 4,
+        "instruction": "Sistemi yeniden başlatın",
+        "command": "sudo reboot",
+        "note": "Yeni kernel için yeniden başlatma gereklidir"
+      }
+    ],
+    "verification": {
+      "command": "uname -r",
+      "expected": "Güncel kernel sürümü görünmelidir"
+    }
+  },
+  "apparmor_disabled": {
+    "title": "AppArmor Devre Dışı",
+    "match_pattern": "AppArmor.*disabled|AppArmor.*devre.*dışı|apparmor.*inactive",
+    "severity": "medium",
+    "impact": "Mandatory Access Control koruması yok",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "AppArmor durumunu kontrol edin",
+        "command": "sudo aa-status"
+      },
+      {
+        "order": 2,
+        "instruction": "AppArmor servisini başlatın",
+        "command": "sudo systemctl start apparmor"
+      },
+      {
+        "order": 3,
+        "instruction": "AppArmor'u etkinleştirin",
+        "command": "sudo systemctl enable apparmor"
+      },
+      {
+        "order": 4,
+        "instruction": "Profilleri enforce moduna alın",
+        "command": "sudo aa-enforce /etc/apparmor.d/*"
+      }
+    ],
+    "verification": {
+      "command": "sudo aa-status --enabled && echo 'AppArmor aktif'",
+      "expected": "AppArmor aktif mesajı"
+    }
+  },
+  "automatic_updates_disabled": {
+    "title": "Otomatik Güncellemeler Devre Dışı",
+    "match_pattern": "otomatik.*güncelleme|automatic.*update|unattended.*upgrade",
+    "severity": "medium",
+    "impact": "Güvenlik yamaları otomatik uygulanmıyor",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Unattended-upgrades paketini kurun",
+        "command": "sudo apt install unattended-upgrades"
+      },
+      {
+        "order": 2,
+        "instruction": "Otomatik güncellemeleri yapılandırın",
+        "command": "sudo dpkg-reconfigure -plow unattended-upgrades"
+      },
+      {
+        "order": 3,
+        "instruction": "Yapılandırmayı kontrol edin",
+        "command": "cat /etc/apt/apt.conf.d/20auto-upgrades"
+      }
+    ],
+    "verification": {
+      "command": "grep -E 'APT::Periodic::Update-Package-Lists|APT::Periodic::Unattended-Upgrade' /etc/apt/apt.conf.d/20auto-upgrades",
+      "expected": "Her iki değer de \"1\" olmalıdır"
+    }
+  },
+  "core_dumps_enabled": {
+    "title": "Core Dump'lar Etkin",
+    "match_pattern": "core.*dump|bellek.*dökümü",
+    "severity": "low",
+    "impact": "Hassas veriler core dump dosyalarında kalabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Mevcut limiti kontrol edin",
+        "command": "ulimit -c"
+      },
+      {
+        "order": 2,
+        "instruction": "Core dump'ları sistem genelinde devre dışı bırakın",
+        "command": "echo '* hard core 0' | sudo tee -a /etc/security/limits.conf"
+      },
+      {
+        "order": 3,
+        "instruction": "Sysctl ile de devre dışı bırakın",
+        "command": "echo 'fs.suid_dumpable = 0' | sudo tee -a /etc/sysctl.conf && sudo sysctl -p"
+      }
+    ],
+    "verification": {
+      "command": "ulimit -c",
+      "expected": "0 dönmelidir"
+    }
+  },
+  "usb_storage_enabled": {
+    "title": "USB Depolama Aktif",
+    "match_pattern": "USB.*storage|USB.*depolama|usb-storage",
+    "severity": "low",
+    "impact": "Yetkisiz veri transferi veya zararlı yazılım riski",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "USB storage modülünü devre dışı bırakın",
+        "command": "echo 'blacklist usb-storage' | sudo tee /etc/modprobe.d/usb-storage.conf"
+      },
+      {
+        "order": 2,
+        "instruction": "Modülü hemen kaldırın (opsiyonel)",
+        "command": "sudo modprobe -r usb-storage",
+        "note": "Bağlı USB diskler varsa önce çıkartın"
+      }
+    ],
+    "verification": {
+      "command": "lsmod | grep usb_storage",
+      "expected": "Hiçbir sonuç dönmemelidir"
+    }
+  },
+  "grub_not_protected": {
+    "title": "GRUB Şifre Koruması Yok",
+    "match_pattern": "GRUB.*password|GRUB.*şifre|bootloader.*koruma",
+    "severity": "medium",
+    "impact": "Fiziksel erişimle boot parametreleri değiştirilebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "GRUB şifresi oluşturun",
+        "command": "grub-mkpasswd-pbkdf2",
+        "note": "Çıkan hash'i kopyalayın"
+      },
+      {
+        "order": 2,
+        "instruction": "GRUB yapılandırmasını düzenleyin",
+        "command": "sudo nano /etc/grub.d/40_custom"
+      },
+      {
+        "order": 3,
+        "instruction": "Aşağıdaki satırları ekleyin",
+        "command": "set superusers=\"admin\"\npassword_pbkdf2 admin HASH_BURAYA",
+        "note": "HASH_BURAYA yerine 1. adımda oluşturulan hash'i yazın"
+      },
+      {
+        "order": 4,
+        "instruction": "GRUB'u güncelleyin",
+        "command": "sudo update-grub"
+      }
+    ],
+    "verification": {
+      "command": "grep -E 'superusers|password_pbkdf2' /boot/grub/grub.cfg",
+      "expected": "Şifre yapılandırması görünmelidir"
+    }
+  },
+  "audit_not_installed": {
+    "title": "Auditd Kurulu Değil",
+    "match_pattern": "auditd|audit.*kurulu|denetim.*log",
+    "severity": "medium",
+    "impact": "Sistem olayları denetlenmiyor",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Auditd paketini kurun",
+        "command": "sudo apt install auditd audispd-plugins"
+      },
+      {
+        "order": 2,
+        "instruction": "Servisi etkinleştirin",
+        "command": "sudo systemctl enable --now auditd"
+      },
+      {
+        "order": 3,
+        "instruction": "Temel kuralları ekleyin",
+        "command": "sudo auditctl -w /etc/passwd -p wa -k identity",
+        "note": "Bu kural passwd dosyasındaki değişiklikleri izler"
+      },
+      {
+        "order": 4,
+        "instruction": "Sudo kullanımını izleyin",
+        "command": "sudo auditctl -w /usr/bin/sudo -p x -k sudo_usage"
+      }
+    ],
+    "verification": {
+      "command": "sudo auditctl -l",
+      "expected": "Tanımlı audit kuralları listelenmeli"
+    }
+  },
+  "timezone_utc": {
+    "title": "Zaman Dilimi Ayarlanmamış/UTC",
+    "match_pattern": "timezone|zaman.*dilimi|UTC",
+    "severity": "info",
+    "impact": "Log zamanları yanlış olabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Mevcut zaman dilimini kontrol edin",
+        "command": "timedatectl"
+      },
+      {
+        "order": 2,
+        "instruction": "Mevcut zaman dilimlerini listeleyin",
+        "command": "timedatectl list-timezones | grep Istanbul"
+      },
+      {
+        "order": 3,
+        "instruction": "Türkiye zaman dilimini ayarlayın",
+        "command": "sudo timedatectl set-timezone Europe/Istanbul"
+      }
+    ],
+    "verification": {
+      "command": "timedatectl | grep 'Time zone'",
+      "expected": "Europe/Istanbul göstermelidir"
+    }
+  },
+  "ntp_not_configured": {
+    "title": "NTP/Zaman Senkronizasyonu Yapılandırılmamış",
+    "match_pattern": "NTP|zaman.*senkron|time.*sync|chrony|systemd-timesyncd",
+    "severity": "low",
+    "impact": "Sistem saati kayabilir, log tutarsızlıkları oluşabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Senkronizasyon durumunu kontrol edin",
+        "command": "timedatectl"
+      },
+      {
+        "order": 2,
+        "instruction": "systemd-timesyncd'yi etkinleştirin",
+        "command": "sudo timedatectl set-ntp true"
+      },
+      {
+        "order": 3,
+        "instruction": "Veya chrony kurun (daha iyi)",
+        "command": "sudo apt install chrony && sudo systemctl enable --now chrony"
+      }
+    ],
+    "verification": {
+      "command": "timedatectl | grep 'synchronized'",
+      "expected": "System clock synchronized: yes"
+    }
+  }
+}

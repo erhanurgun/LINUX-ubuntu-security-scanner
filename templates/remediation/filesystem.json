@@ -1,0 +1,214 @@
+{
+  "world_writable_files": {
+    "title": "Herkes Tarafından Yazılabilir Dosyalar",
+    "match_pattern": "world.*writable|herkes.*yazılabilir|777.*izin|o\\+w",
+    "severity": "high",
+    "impact": "Herhangi bir kullanıcı bu dosyaları değiştirebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "World-writable dosyaları listeleyin",
+        "command": "sudo find / -type f -perm -002 -ls 2>/dev/null | head -50"
+      },
+      {
+        "order": 2,
+        "instruction": "Her dosya için gerekliliği değerlendirin",
+        "command": null,
+        "note": "Bazı dosyalar (örneğin /tmp içindekiler) world-writable olabilir"
+      },
+      {
+        "order": 3,
+        "instruction": "Gereksiz izinleri kaldırın",
+        "command": "sudo chmod o-w DOSYA_YOLU",
+        "note": "DOSYA_YOLU yerine gerçek dosya yolunu yazın"
+      }
+    ],
+    "verification": {
+      "command": "find DOSYA_YOLU -perm -002 2>/dev/null",
+      "expected": "Hiçbir sonuç dönmemelidir"
+    }
+  },
+  "unowned_files": {
+    "title": "Sahipsiz Dosyalar Tespit Edildi",
+    "match_pattern": "sahipsiz.*dosya|unowned|nouser|nogroup",
+    "severity": "medium",
+    "impact": "Silinen kullanıcılara ait dosyalar güvenlik riski oluşturabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Sahipsiz dosyaları listeleyin",
+        "command": "sudo find / -nouser -o -nogroup 2>/dev/null | head -50"
+      },
+      {
+        "order": 2,
+        "instruction": "Dosyaları inceleyin ve gerekliliğini değerlendirin",
+        "command": "ls -la DOSYA_YOLU",
+        "note": "Dosyanın içeriğini ve amacını kontrol edin"
+      },
+      {
+        "order": 3,
+        "instruction": "Gerekli dosyaları uygun kullanıcıya atayın",
+        "command": "sudo chown KULLANICI:GRUP DOSYA_YOLU"
+      },
+      {
+        "order": 4,
+        "instruction": "Gereksiz dosyaları silin",
+        "command": "sudo rm DOSYA_YOLU",
+        "note": "Silmeden önce içeriği kontrol edin!"
+      }
+    ],
+    "verification": {
+      "command": "ls -la DOSYA_YOLU",
+      "expected": "Geçerli kullanıcı ve grup görünmelidir"
+    }
+  },
+  "suid_suspicious": {
+    "title": "Şüpheli SUID/SGID Dosyaları",
+    "match_pattern": "SUID|SGID|setuid|setgid|4755|2755",
+    "severity": "high",
+    "impact": "SUID dosyaları root olarak çalışır, ayrıcalık yükseltme riski",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Tüm SUID dosyalarını listeleyin",
+        "command": "sudo find / -perm -4000 -type f 2>/dev/null"
+      },
+      {
+        "order": 2,
+        "instruction": "SGID dosyalarını listeleyin",
+        "command": "sudo find / -perm -2000 -type f 2>/dev/null"
+      },
+      {
+        "order": 3,
+        "instruction": "Her dosyanın paket tarafından kurulup kurulmadığını kontrol edin",
+        "command": "dpkg -S DOSYA_YOLU",
+        "note": "Paket bulunamazsa şüpheli olabilir"
+      },
+      {
+        "order": 4,
+        "instruction": "Gereksiz SUID bitini kaldırın",
+        "command": "sudo chmod u-s DOSYA_YOLU",
+        "note": "Dikkatli olun, bazı programlar SUID gerektirir"
+      }
+    ],
+    "verification": {
+      "command": "stat DOSYA_YOLU | grep -i suid",
+      "expected": "SUID biti kaldırılmış olmalıdır"
+    }
+  },
+  "tmp_not_separate": {
+    "title": "/tmp Ayrı Partition Değil",
+    "match_pattern": "/tmp.*partition|/tmp.*mount|tmp.*ayrı",
+    "severity": "medium",
+    "impact": "Tmp dosyaları disk dolumu veya noexec korumasından yoksun",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Mevcut /tmp mount durumunu kontrol edin",
+        "command": "mount | grep /tmp"
+      },
+      {
+        "order": 2,
+        "instruction": "Geçici çözüm: tmpfs ile mount edin",
+        "command": "sudo mount -t tmpfs -o size=1G,mode=1777,noexec,nosuid,nodev tmpfs /tmp"
+      },
+      {
+        "order": 3,
+        "instruction": "Kalıcı çözüm için /etc/fstab'a ekleyin",
+        "command": "tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev,size=1G 0 0",
+        "note": "Bu satırı /etc/fstab dosyasına ekleyin"
+      }
+    ],
+    "verification": {
+      "command": "mount | grep /tmp",
+      "expected": "tmpfs veya ayrı partition, noexec ile mount edilmiş olmalı"
+    }
+  },
+  "home_permissions": {
+    "title": "Home Dizini İzinleri Gevşek",
+    "match_pattern": "home.*izin|home.*permission|/home.*755|/home.*777",
+    "severity": "medium",
+    "impact": "Diğer kullanıcılar home dizininizi okuyabilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "Home dizini izinlerini kontrol edin",
+        "command": "ls -la /home/"
+      },
+      {
+        "order": 2,
+        "instruction": "Her kullanıcı için izinleri sıkıştırın",
+        "command": "sudo chmod 700 /home/KULLANICI",
+        "note": "KULLANICI yerine gerçek kullanıcı adını yazın"
+      },
+      {
+        "order": 3,
+        "instruction": "Tüm kullanıcılar için toplu düzeltme",
+        "command": "for dir in /home/*/; do sudo chmod 700 \"$dir\"; done"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a %n' /home/*/",
+      "expected": "700 izinleri görünmelidir"
+    }
+  },
+  "sensitive_file_permissions": {
+    "title": "Hassas Dosya İzinleri Yanlış",
+    "match_pattern": "shadow.*izin|passwd.*izin|sensitive.*permission|hassas.*dosya",
+    "severity": "critical",
+    "impact": "Kritik sistem dosyalarına yetkisiz erişim",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "/etc/shadow izinlerini düzelt",
+        "command": "sudo chmod 640 /etc/shadow && sudo chown root:shadow /etc/shadow"
+      },
+      {
+        "order": 2,
+        "instruction": "/etc/passwd izinlerini düzelt",
+        "command": "sudo chmod 644 /etc/passwd && sudo chown root:root /etc/passwd"
+      },
+      {
+        "order": 3,
+        "instruction": "/etc/gshadow izinlerini düzelt",
+        "command": "sudo chmod 640 /etc/gshadow && sudo chown root:shadow /etc/gshadow"
+      },
+      {
+        "order": 4,
+        "instruction": "/etc/group izinlerini düzelt",
+        "command": "sudo chmod 644 /etc/group && sudo chown root:root /etc/group"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a %U:%G %n' /etc/shadow /etc/passwd /etc/gshadow /etc/group",
+      "expected": "shadow: 640 root:shadow, passwd: 644 root:root"
+    }
+  },
+  "sticky_bit_missing": {
+    "title": "Sticky Bit Eksik (/tmp, /var/tmp)",
+    "match_pattern": "sticky.*bit|yapışan.*bit|1777",
+    "severity": "medium",
+    "impact": "Kullanıcılar birbirlerinin dosyalarını silebilir",
+    "steps": [
+      {
+        "order": 1,
+        "instruction": "/tmp sticky bit durumunu kontrol edin",
+        "command": "stat -c '%a' /tmp"
+      },
+      {
+        "order": 2,
+        "instruction": "/tmp için sticky bit ekleyin",
+        "command": "sudo chmod +t /tmp"
+      },
+      {
+        "order": 3,
+        "instruction": "/var/tmp için sticky bit ekleyin",
+        "command": "sudo chmod +t /var/tmp"
+      }
+    ],
+    "verification": {
+      "command": "stat -c '%a' /tmp /var/tmp",
+      "expected": "1777 olmalıdır (sonunda t harfi)"
+    }
+  }
+}

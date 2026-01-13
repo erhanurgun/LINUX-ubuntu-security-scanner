@@ -1,0 +1,52 @@
+{
+  "scan": {
+    "parallel": false,
+    "threads": 4,
+    "timeout": 300
+  },
+  "modules": {
+    "enabled": ["all"],
+    "disabled": []
+  },
+  "reporting": {
+    "format": "terminal",
+    "organize_by_date": true,
+    "retention_days": 90
+  },
+  "notifications": {
+    "desktop": true,
+    "email": false,
+    "on_severity": ["critical", "high"]
+  },
+  "fim": {
+    "enabled": true,
+    "directories": [
+      "/usr/bin",
+      "/usr/sbin",
+      "/bin",
+      "/sbin",
+      "/etc/passwd",
+      "/etc/shadow",
+      "/etc/group",
+      "/etc/sudoers",
+      "/etc/ssh/sshd_config",
+      "/etc/crontab"
+    ],
+    "exclude_patterns": ["*.log", "*.tmp", "*.cache"]
+  },
+  "filters": {
+    "min_severity": "low",
+    "exclude_dirs": [
+      "/proc",
+      "/sys",
+      "/dev",
+      "/run",
+      "/snap"
+    ]
+  },
+  "interface": {
+    "language": "tr",
+    "color": true,
+    "verbose": false
+  }
+}

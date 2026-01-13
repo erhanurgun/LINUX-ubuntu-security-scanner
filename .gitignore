@@ -1,0 +1,31 @@
+# Runtime data
+data/*
+!data/.gitkeep
+
+# Reports (user-generated)
+.reports/*
+!.reports/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Backups
+*.bak
+*.backup
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary
+tmp/
+temp/
+*.tmp
