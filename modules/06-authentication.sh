@@ -18,7 +18,7 @@ scan() {
     if [[ -f "$sshd_config" ]]; then
         # Root login
         local root_login
-        root_login=$(grep -E "^PermitRootLogin" "$sshd_config" 2>/dev/null | awk '{print $2}' || echo "prohibit-password")
+        root_login=$(get_sshd_param "PermitRootLogin" "prohibit-password" "$sshd_config")
 
         case "$root_login" in
             "yes")
@@ -37,7 +37,7 @@ scan() {
 
         # Password authentication
         local pass_auth
-        pass_auth=$(grep -E "^PasswordAuthentication" "$sshd_config" 2>/dev/null | awk '{print $2}' || echo "yes")
+        pass_auth=$(get_sshd_param "PasswordAuthentication" "yes" "$sshd_config")
 
         if [[ "$pass_auth" == "yes" ]]; then
             alert_medium "SSH password authentication aktif" \
@@ -50,7 +50,7 @@ scan() {
 
         # Empty passwords
         local empty_pass
-        empty_pass=$(grep -E "^PermitEmptyPasswords" "$sshd_config" 2>/dev/null | awk '{print $2}' || echo "no")
+        empty_pass=$(get_sshd_param "PermitEmptyPasswords" "no" "$sshd_config")
 
         if [[ "$empty_pass" == "yes" ]]; then
             alert_critical "SSH boş şifre izni aktif" \
@@ -63,7 +63,7 @@ scan() {
 
         # X11 Forwarding
         local x11_fwd
-        x11_fwd=$(grep -E "^X11Forwarding" "$sshd_config" 2>/dev/null | awk '{print $2}' || echo "yes")
+        x11_fwd=$(get_sshd_param "X11Forwarding" "yes" "$sshd_config")
 
         if [[ "$x11_fwd" == "yes" && "$sshd_active" == "true" ]]; then
             alert_low "SSH X11 forwarding aktif" \
@@ -74,7 +74,7 @@ scan() {
 
         # Protocol version
         local protocol
-        protocol=$(grep -E "^Protocol" "$sshd_config" 2>/dev/null | awk '{print $2}' || echo "2")
+        protocol=$(get_sshd_param "Protocol" "2" "$sshd_config")
 
         if [[ "$protocol" == *"1"* ]]; then
             alert_critical "SSH Protocol 1 aktif" \
@@ -85,7 +85,7 @@ scan() {
 
         # MaxAuthTries
         local max_auth
-        max_auth=$(grep -E "^MaxAuthTries" "$sshd_config" 2>/dev/null | awk '{print $2}' || echo "6")
+        max_auth=$(get_sshd_param "MaxAuthTries" "6" "$sshd_config")
 
         if [[ $max_auth -gt 6 ]]; then
             alert_low "SSH MaxAuthTries yüksek ($max_auth)" \
@@ -110,7 +110,7 @@ scan() {
 
         # Banner
         local banner
-        banner=$(grep -E "^Banner" "$sshd_config" 2>/dev/null | awk '{print $2}' || true)
+        banner=$(get_sshd_param "Banner" "" "$sshd_config")
 
         if [[ -z "$banner" || "$banner" == "none" ]]; then
             alert_info "SSH banner tanımlı değil" \
@@ -125,10 +125,10 @@ scan() {
     if [[ -f /etc/login.defs ]]; then
         local pass_max_days pass_min_days pass_min_len pass_warn_age
 
-        pass_max_days=$(grep "^PASS_MAX_DAYS" /etc/login.defs 2>/dev/null | awk '{print $2}' || echo "99999")
-        pass_min_days=$(grep "^PASS_MIN_DAYS" /etc/login.defs 2>/dev/null | awk '{print $2}' || echo "0")
-        pass_min_len=$(grep "^PASS_MIN_LEN" /etc/login.defs 2>/dev/null | awk '{print $2}' || echo "5")
-        pass_warn_age=$(grep "^PASS_WARN_AGE" /etc/login.defs 2>/dev/null | awk '{print $2}' || echo "7")
+        pass_max_days=$(get_login_defs "PASS_MAX_DAYS" "99999")
+        pass_min_days=$(get_login_defs "PASS_MIN_DAYS" "0")
+        pass_min_len=$(get_login_defs "PASS_MIN_LEN" "5")
+        pass_warn_age=$(get_login_defs "PASS_WARN_AGE" "7")
 
         if [[ $pass_max_days -gt 365 ]]; then
             alert_medium "Şifre maksimum yaşı çok yüksek ($pass_max_days gün)" \

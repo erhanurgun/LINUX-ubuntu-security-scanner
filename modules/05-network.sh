@@ -161,7 +161,7 @@ scan() {
 
     # IP Forwarding
     local ip_forward
-    ip_forward=$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || echo "0")
+    ip_forward=$(get_sysctl "net.ipv4.ip_forward" "0")
 
     if [[ $ip_forward -eq 1 ]]; then
         alert_medium "IPv4 forwarding aktif" \
@@ -174,7 +174,7 @@ scan() {
 
     # ICMP redirects
     local icmp_redirect
-    icmp_redirect=$(cat /proc/sys/net/ipv4/conf/all/accept_redirects 2>/dev/null || echo "1")
+    icmp_redirect=$(get_sysctl "net.ipv4.conf.all.accept_redirects" "1")
 
     if [[ $icmp_redirect -eq 1 ]]; then
         alert_low "ICMP redirects kabul ediliyor" \
@@ -187,7 +187,7 @@ scan() {
 
     # Source routing
     local source_route
-    source_route=$(cat /proc/sys/net/ipv4/conf/all/accept_source_route 2>/dev/null || echo "1")
+    source_route=$(get_sysctl "net.ipv4.conf.all.accept_source_route" "1")
 
     if [[ $source_route -eq 1 ]]; then
         alert_medium "Source routing kabul ediliyor" \
@@ -200,7 +200,7 @@ scan() {
 
     # SYN cookies
     local syn_cookies
-    syn_cookies=$(cat /proc/sys/net/ipv4/tcp_syncookies 2>/dev/null || echo "0")
+    syn_cookies=$(get_sysctl "net.ipv4.tcp_syncookies" "0")
 
     if [[ $syn_cookies -eq 1 ]]; then
         alert_ok "SYN cookies aktif (SYN flood koruması)"
@@ -213,7 +213,7 @@ scan() {
 
     # Reverse path filtering
     local rp_filter
-    rp_filter=$(cat /proc/sys/net/ipv4/conf/all/rp_filter 2>/dev/null || echo "0")
+    rp_filter=$(get_sysctl "net.ipv4.conf.all.rp_filter" "0")
 
     if [[ $rp_filter -ge 1 ]]; then
         alert_ok "Reverse path filtering aktif"

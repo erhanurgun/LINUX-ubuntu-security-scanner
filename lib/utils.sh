@@ -476,3 +476,33 @@ is_whitelisted() {
         return 1
     fi
 }
+
+# === DRY HELPER FONKSİYONLARI ===
+
+# SSH config parametresi oku
+get_sshd_param() {
+    local param="$1"
+    local default="${2:-}"
+    local config="${3:-/etc/ssh/sshd_config}"
+
+    [[ ! -f "$config" ]] && { echo "$default"; return; }
+    grep -E "^${param}\s" "$config" 2>/dev/null | awk '{print $2}' | head -1 || echo "$default"
+}
+
+# Kernel sysctl parametresi oku
+get_sysctl() {
+    local param="$1"
+    local default="${2:-0}"
+    local path="/proc/sys/${param//./\/}"
+
+    cat "$path" 2>/dev/null || echo "$default"
+}
+
+# login.defs parametresi oku
+get_login_defs() {
+    local param="$1"
+    local default="${2:-}"
+
+    [[ ! -f /etc/login.defs ]] && { echo "$default"; return; }
+    grep "^${param}" /etc/login.defs 2>/dev/null | awk '{print $2}' | head -1 || echo "$default"
+}
