@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-01-13
+### Changed
+- **SRP Refactoring:** lib/reporting.sh 1055 satırdan 35 satırlık wrapper'a dönüştürüldü
+- lib/reporting/ dizini oluşturuldu:
+  - `helpers.sh` - Yardımcı fonksiyonlar (html_escape, severity_to_turkish, SVG ikonlar)
+  - `json.sh` - JSON rapor oluşturma
+  - `html.sh` - HTML rapor oluşturma (TailwindCSS)
+  - `management.sh` - Rapor yönetimi, listeleme, temizleme
+
 ## [0.2.2] - 2026-01-13
 ### Fixed
 - Türkçe karakter düzeltmeleri (icin->için, cozum->çözüm, vb.)

@@ -1,7 +1,7 @@
 # Ubuntu Security Scanner - Geliştirme Kuralları
 
 ## Proje Bilgisi
-- **Proje:** Ubuntu Security Scanner v0.2.2
+- **Proje:** Ubuntu Security Scanner v0.3.0
 - **Dil:** Bash (shell scripting)
 - **Amaç:** Ubuntu sistemler için güvenlik tarama aracı
 
@@ -24,6 +24,7 @@ Versiyon değiştiğinde şu dosyalar güncellenmelidir:
 3. `CHANGELOG.md` - Değişiklik kaydı
 
 ### Değişiklik Kaydı
+- **v0.3.0** - SRP modül bölme (lib/reporting/ dizini), reporting.sh wrapper olarak güncellendi
 - **v0.2.2** - Türkçe karakter düzeltmeleri, DRY helper fonksiyonlar
 - **v0.2.1** - Tab active state bug fix, Tümü Aç/Kapat kaldırıldı, Her satıra Detay butonu eklendi
 - **v0.2.0** - Modal Dialog eklendi, Tab active state ve hidden/show bug fix'leri
@@ -50,7 +51,8 @@ Versiyon değiştiğinde şu dosyalar güncellenmelidir:
 ## Dizin Yapısı
 ```
 ├── bin/                 # Ana çalıştırılabilir dosya
-├── lib/                 # Kütüphane dosyaları (utils.sh, core.sh, reporting.sh)
+├── lib/                 # Kütüphane dosyaları
+│   ├── reporting/       # Raporlama alt modülleri (SRP uyumu)
 ├── modules/             # Tarama modülleri
 ├── templates/           # CSS ve JS şablonları
 │   ├── css/

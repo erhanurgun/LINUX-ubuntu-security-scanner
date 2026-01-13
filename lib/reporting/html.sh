@@ -1,0 +1,655 @@
+#!/bin/bash
+#
+# Security Scanner v0.2.2 - HTML Rapor Modülü
+# html.sh - TailwindCSS ile HTML rapor oluşturma
+#
+
+# Remediation panel HTML'i oluştur
+generate_remediation_panel() {
+    local finding_id="$1"
+    local remediation_json="$2"
+
+    if [[ -z "$remediation_json" || "$remediation_json" == "null" ]]; then
+        return
+    fi
+
+    local rem_title impact steps_count verification_cmd verification_expected
+
+    if command_exists jq; then
+        rem_title=$(echo "$remediation_json" | jq -r '.title // ""' 2>/dev/null)
+        impact=$(echo "$remediation_json" | jq -r '.impact // ""' 2>/dev/null)
+        steps_count=$(echo "$remediation_json" | jq -r '.steps | length' 2>/dev/null)
+        verification_cmd=$(echo "$remediation_json" | jq -r '.verification.command // ""' 2>/dev/null)
+        verification_expected=$(echo "$remediation_json" | jq -r '.verification.expected // ""' 2>/dev/null)
+    else
+        return
+    fi
+
+    cat <<EOF
+                <div id="remediation-${finding_id}" class="remediation-panel hidden bg-gray-800/50 rounded-lg p-6 mt-4 border border-gray-700">
+                    <div class="panel-content">
+EOF
+
+    # Impact
+    if [[ -n "$impact" && "$impact" != "null" ]]; then
+        cat <<EOF
+                        <div class="flex items-start gap-3 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg mb-4">
+                            <span class="text-orange-400 flex-shrink-0">$(svg_icon_warning)</span>
+                            <span class="text-orange-300 text-sm">$(html_escape "$impact")</span>
+                        </div>
+EOF
+    fi
+
+    # Steps
+    if [[ "$steps_count" -gt 0 ]]; then
+        echo "                        <div class=\"space-y-4\">"
+        echo "                            <h4 class=\"text-lg font-semibold text-gray-200\">Çözüm Adımları</h4>"
+
+        local i
+        for ((i=0; i<steps_count; i++)); do
+            local instruction command note tip explanation
+            instruction=$(echo "$remediation_json" | jq -r ".steps[$i].instruction // \"\"" 2>/dev/null)
+            command=$(echo "$remediation_json" | jq -r ".steps[$i].command // \"\"" 2>/dev/null)
+            note=$(echo "$remediation_json" | jq -r ".steps[$i].note // \"\"" 2>/dev/null)
+            tip=$(echo "$remediation_json" | jq -r ".steps[$i].tip // \"\"" 2>/dev/null)
+            explanation=$(echo "$remediation_json" | jq -r ".steps[$i].explanation // \"\"" 2>/dev/null)
+
+            local step_num=$((i+1))
+
+            cat <<EOF
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-sm">${step_num}</div>
+                                <div class="flex-1">
+                                    <p class="text-gray-200 font-medium">$(html_escape "$instruction")</p>
+EOF
+
+            # Command block
+            if [[ -n "$command" && "$command" != "null" ]]; then
+                local cmd_id="cmd-${finding_id}-${i}"
+                cat <<EOF
+                                    <div class="flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden my-2">
+                                        <code id="${cmd_id}" class="flex-1 px-4 py-2 text-blue-400 font-mono text-sm overflow-x-auto">$(html_escape "$command")</code>
+                                        <button class="copy-btn px-3 py-2 bg-gray-800 hover:bg-blue-600 text-gray-400 hover:text-white border-l border-gray-700 transition-colors" data-target="${cmd_id}" title="Kopyala">
+                                            $(svg_icon_clipboard)
+                                        </button>
+                                    </div>
+EOF
+            fi
+
+            # Note, Tip, Explanation
+            if [[ -n "$note" && "$note" != "null" ]]; then
+                echo "                                    <div class=\"flex items-start gap-2 text-gray-400 text-sm mt-2\"><span class=\"text-blue-400\">$(svg_icon_info)</span> $(html_escape "$note")</div>"
+            fi
+            if [[ -n "$tip" && "$tip" != "null" ]]; then
+                echo "                                    <div class=\"flex items-start gap-2 text-yellow-400 text-sm mt-2\"><span>$(svg_icon_lightbulb)</span> $(html_escape "$tip")</div>"
+            fi
+            if [[ -n "$explanation" && "$explanation" != "null" ]]; then
+                echo "                                    <p class=\"text-gray-500 text-sm mt-2 italic\">$(html_escape "$explanation")</p>"
+            fi
+
+            echo "                                </div>"
+            echo "                            </div>"
+        done
+
+        echo "                        </div>"
+    fi
+
+    # Verification
+    if [[ -n "$verification_cmd" && "$verification_cmd" != "null" ]]; then
+        local verify_id="verify-${finding_id}"
+        cat <<EOF
+                        <div class="mt-6 pt-6 border-t border-gray-700">
+                            <h4 class="flex items-center gap-2 text-green-400 font-semibold mb-3">$(svg_icon_check) Doğrulama</h4>
+                            <div class="flex items-center bg-gray-900 border border-gray-700 rounded-md overflow-hidden">
+                                <code id="${verify_id}" class="flex-1 px-4 py-2 text-blue-400 font-mono text-sm overflow-x-auto">$(html_escape "$verification_cmd")</code>
+                                <button class="copy-btn px-3 py-2 bg-gray-800 hover:bg-blue-600 text-gray-400 hover:text-white border-l border-gray-700 transition-colors" data-target="${verify_id}" title="Kopyala">
+                                    $(svg_icon_clipboard)
+                                </button>
+                            </div>
+EOF
+        if [[ -n "$verification_expected" && "$verification_expected" != "null" ]]; then
+            echo "                            <p class=\"text-gray-500 text-sm mt-2\">Beklenen: $(html_escape "$verification_expected")</p>"
+        fi
+        echo "                        </div>"
+    fi
+
+    cat <<EOF
+                    </div>
+                </div>
+EOF
+}
+
+# CSS inline
+inline_css() {
+    local css_file="${TEMPLATES_DIR:-${SCANNER_DIR}/templates}/css/styles.css"
+
+    if [[ -f "$css_file" ]]; then
+        cat "$css_file"
+    else
+        # Fallback minimal CSS
+        cat <<'FALLBACKCSS'
+:root {
+    --critical: #dc3545;
+    --high: #e74c3c;
+    --medium: #f39c12;
+    --low: #3498db;
+    --info: #6c757d;
+    --pass: #28a745;
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --text: #eaeaea;
+    --border: #0f3460;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 2rem; }
+.container { max-width: 1400px; margin: 0 auto; }
+.badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+.badge.critical { background: var(--critical); }
+.badge.high { background: var(--high); }
+.badge.medium { background: var(--medium); color: #000; }
+.badge.low { background: var(--low); }
+.badge.info { background: var(--info); }
+FALLBACKCSS
+    fi
+}
+
+# JS inline
+inline_js() {
+    local js_file="${TEMPLATES_DIR:-${SCANNER_DIR}/templates}/js/report.js"
+
+    if [[ -f "$js_file" ]]; then
+        cat "$js_file"
+    else
+        # Fallback minimal JS
+        cat <<'FALLBACKJS'
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.copy-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = document.getElementById(btn.dataset.target);
+            if (target) {
+                navigator.clipboard.writeText(target.textContent.trim());
+            }
+        });
+    });
+});
+FALLBACKJS
+    fi
+}
+
+# Ana HTML rapor fonksiyonu
+generate_html_report() {
+    local output_file="${1:-${REPORT_DIR_TODAY:-$REPORT_DIR}/html/scan_${SCAN_ID}.html}"
+
+    mkdir -p "$(dirname "$output_file")"
+
+    # Risk seviyesine göre renk ve class
+    local risk_color_class risk_level risk_border_class
+    if [[ ${RISK_SCORE:-0} -ge 70 ]]; then
+        risk_color_class="text-red-500"
+        risk_border_class="border-red-500"
+        risk_level="Kritik"
+    elif [[ ${RISK_SCORE:-0} -ge 40 ]]; then
+        risk_color_class="text-yellow-500"
+        risk_border_class="border-yellow-500"
+        risk_level="Orta"
+    else
+        risk_color_class="text-green-500"
+        risk_border_class="border-green-500"
+        risk_level="Düşük"
+    fi
+
+    # HTML başlangıcı - TailwindCSS CDN
+    cat > "$output_file" <<'HTMLHEAD'
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scanner Raporu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        critical: '#dc3545',
+                        high: '#e74c3c',
+                        medium: '#f39c12',
+                        low: '#3498db',
+                        info: '#6c757d',
+                        pass: '#28a745'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Fallback minimal styles for offline use */
+        .hidden { display: none !important; }
+        .remediation-panel.show { display: block !important; }
+
+        /* Tab active state */
+        .tab {
+            transition: all 0.2s ease;
+        }
+        .tab.active {
+            background-color: rgb(37, 99, 235) !important;
+            color: white !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        .tab:not(.active):hover {
+            background-color: rgb(75, 85, 99);
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            animation: modalSlideIn 0.2s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -48%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            .no-print { display: none !important; }
+            .remediation-panel { display: block !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+<div class="max-w-7xl mx-auto px-4 py-8">
+HTMLHEAD
+
+    # Header
+    cat >> "$output_file" <<EOF
+    <!-- Header -->
+    <header class="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <h1 class="text-2xl font-bold text-white">Security Scanner Raporu</h1>
+            <div class="flex flex-wrap gap-4 text-sm text-gray-400">
+                <span class="flex items-center gap-2">
+                    $(svg_icon_computer)
+                    $(hostname)
+                </span>
+                <span class="flex items-center gap-2">
+                    $(svg_icon_calendar)
+                    $(date '+%d.%m.%Y %H:%M')
+                </span>
+                <span class="flex items-center gap-2">
+                    $(svg_icon_clock)
+                    $(format_duration ${SCAN_DURATION:-0})
+                </span>
+                <span class="flex items-center gap-2">
+                    $(svg_icon_key)
+                    ID: ${SCAN_ID:-unknown}
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <!-- Risk Score Card -->
+        <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 col-span-2 md:col-span-1 flex flex-col items-center justify-center">
+            <div class="w-20 h-20 rounded-full border-4 ${risk_border_class} flex flex-col items-center justify-center mb-2">
+                <span class="text-2xl font-bold ${risk_color_class}">${RISK_SCORE:-0}</span>
+                <span class="text-xs text-gray-500">Risk</span>
+            </div>
+            <span class="text-sm font-medium ${risk_color_class}">${risk_level} Risk</span>
+        </div>
+
+        <!-- Severity Cards -->
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-red-500 text-center">
+            <div class="text-3xl font-bold text-red-500">${CRITICAL_COUNT:-0}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Kritik</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-orange-500 text-center">
+            <div class="text-3xl font-bold text-orange-500">${HIGH_COUNT:-0}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Yüksek</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-yellow-500 text-center">
+            <div class="text-3xl font-bold text-yellow-500">${MEDIUM_COUNT:-0}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Orta</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-blue-500 text-center">
+            <div class="text-3xl font-bold text-blue-500">${LOW_COUNT:-0}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Düşük</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-green-500 text-center">
+            <div class="text-3xl font-bold text-green-500">${PASS_COUNT:-0}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">Geçti</div>
+        </div>
+    </div>
+
+    <!-- Findings Section -->
+    <section class="bg-gray-800 rounded-lg border border-gray-700 mb-8">
+        <div class="p-4 border-b border-gray-700">
+            <h2 class="text-xl font-semibold text-white">Bulgular</h2>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex flex-wrap gap-1 p-4 border-b border-gray-700 no-print">
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="all">
+                Tümü <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${TOTAL_FINDINGS:-0}</span>
+            </button>
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="critical">
+                Kritik <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${CRITICAL_COUNT:-0}</span>
+            </button>
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="high">
+                Yüksek <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${HIGH_COUNT:-0}</span>
+            </button>
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="medium">
+                Orta <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${MEDIUM_COUNT:-0}</span>
+            </button>
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="low">
+                Düşük <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${LOW_COUNT:-0}</span>
+            </button>
+            <button class="tab px-3 py-2 text-sm rounded bg-gray-700 text-gray-300" data-severity="info">
+                Bilgi <span class="badge ml-1 px-2 py-0.5 bg-gray-600 rounded-full text-xs">${INFO_COUNT:-0}</span>
+            </button>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-700 no-print">
+            <div class="flex-1 relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$(svg_icon_search)</span>
+                <input type="text" id="search-findings" placeholder="Bulgu ara..." class="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+            <select id="category-filter" class="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:border-blue-500">
+                <option value="">Tüm Kategoriler</option>
+                <option value="system">Sistem</option>
+                <option value="kernel">Kernel</option>
+                <option value="network">Ağ</option>
+                <option value="authentication">Kimlik Doğrulama</option>
+                <option value="services">Servisler</option>
+                <option value="permissions">İzinler</option>
+                <option value="filesystem">Dosya Sistemi</option>
+                <option value="malware">Zararlı Yazılım</option>
+                <option value="containers">Konteynerler</option>
+                <option value="compliance">Uyumluluk</option>
+            </select>
+        </div>
+
+        <!-- Findings Table -->
+        <div class="overflow-x-auto">
+            <table class="findings-table w-full">
+                <thead class="bg-gray-900">
+                    <tr>
+                        <th data-sort="severity" class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white">Seviye</th>
+                        <th data-sort="category" class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white">Kategori</th>
+                        <th data-sort="title" class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white">Bulgu</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+EOF
+
+    # Findings'leri tabloya ekle
+    local finding_idx=0
+    for finding in "${FINDINGS[@]}"; do
+        local severity title description remediation category
+
+        if command_exists jq; then
+            severity=$(echo "$finding" | jq -r '.severity' 2>/dev/null | tr '[:upper:]' '[:lower:]')
+            title=$(echo "$finding" | jq -r '.title' 2>/dev/null)
+            description=$(echo "$finding" | jq -r '.description // ""' 2>/dev/null)
+            remediation=$(echo "$finding" | jq -r '.remediation // ""' 2>/dev/null)
+            category=$(echo "$finding" | jq -r '.category // "general"' 2>/dev/null)
+        else
+            severity="info"
+            title="Bulgu"
+            description=""
+            remediation=""
+            category="general"
+        fi
+
+        # Severity'yi normalize et
+        case "$severity" in
+            kritik|critical) severity="critical" ;;
+            yüksek|high) severity="high" ;;
+            orta|medium) severity="medium" ;;
+            düşük|low) severity="low" ;;
+            bilgi|info) severity="info" ;;
+            geçti|pass) severity="pass" ;;
+        esac
+
+        # Pass bulgularını atla
+        [[ "$severity" == "pass" ]] && continue
+
+        local finding_id="finding-${finding_idx}"
+        local severity_tr
+        severity_tr=$(severity_to_turkish "$severity")
+        local category_tr
+        category_tr=$(category_to_turkish "$category")
+
+        # Severity badge class
+        local badge_class
+        case "$severity" in
+            critical) badge_class="bg-red-500/20 text-red-400 border border-red-500/30" ;;
+            high) badge_class="bg-orange-500/20 text-orange-400 border border-orange-500/30" ;;
+            medium) badge_class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" ;;
+            low) badge_class="bg-blue-500/20 text-blue-400 border border-blue-500/30" ;;
+            info) badge_class="bg-gray-500/20 text-gray-400 border border-gray-500/30" ;;
+            *) badge_class="bg-gray-500/20 text-gray-400 border border-gray-500/30" ;;
+        esac
+
+        # Remediation bilgisini ara
+        local remediation_data
+        remediation_data=$(lookup_remediation "$title" "$category" "$severity")
+
+        local has_remediation="false"
+        [[ -n "$remediation_data" ]] && has_remediation="true"
+
+        cat >> "$output_file" <<EOF
+                    <tr class="finding-row hover:bg-gray-700/50" data-severity="${severity}" data-category="${category}">
+                        <td class="px-4 py-3">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold uppercase rounded ${badge_class}">${severity_tr}</span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-400 text-sm">${category_tr}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-gray-200">$(html_escape "$title")</div>
+EOF
+
+        if [[ -n "$description" && "$description" != "null" ]]; then
+            echo "                            <div class=\"text-sm text-gray-500 mt-1\">$(html_escape "$description")</div>" >> "$output_file"
+        fi
+
+        cat >> "$output_file" <<EOF
+                        </td>
+                        <td class="px-4 py-3">
+EOF
+
+        # Her satıra modal butonu ekle
+        local rem_title rem_desc rem_steps rem_affected
+        if [[ "$has_remediation" == "true" ]]; then
+            rem_title=$(echo "$remediation_data" | jq -r '.title // empty' 2>/dev/null)
+            rem_desc=$(echo "$remediation_data" | jq -r '.description // empty' 2>/dev/null)
+            rem_steps=$(echo "$remediation_data" | jq -r '.steps // empty' 2>/dev/null)
+            rem_affected=$(echo "$remediation_data" | jq -r '.affected // empty' 2>/dev/null)
+
+            [[ -z "$rem_title" ]] && rem_title="$title"
+            [[ -z "$rem_desc" ]] && rem_desc="$description"
+            [[ -z "$rem_steps" ]] && rem_steps="$remediation_data"
+        else
+            rem_title="$title"
+            rem_desc="$description"
+            rem_steps="Bu bulgu için otomatik çözüm önerisi bulunmuyor. Manuel inceleme önerilir."
+            rem_affected=""
+        fi
+
+        # HTML escape ve base64 encode
+        local encoded_title encoded_desc encoded_steps encoded_affected
+        encoded_title=$(echo -n "$rem_title" | base64 -w0)
+        encoded_desc=$(echo -n "$rem_desc" | base64 -w0)
+        encoded_steps=$(echo -n "$rem_steps" | base64 -w0)
+        encoded_affected=$(echo -n "$rem_affected" | base64 -w0)
+
+        cat >> "$output_file" <<EOF
+                            <button class="btn-modal inline-flex items-center gap-1 px-3 py-1 text-sm bg-gray-700 hover:bg-blue-600 rounded text-gray-300 hover:text-white transition-colors"
+                                    onclick="SecurityReport.openModal(this)"
+                                    data-title="${encoded_title}"
+                                    data-description="${encoded_desc}"
+                                    data-remediation="${encoded_steps}"
+                                    data-affected="${encoded_affected}"
+                                    data-severity="${severity}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>Detay</span>
+                            </button>
+EOF
+
+        cat >> "$output_file" <<EOF
+                        </td>
+                    </tr>
+EOF
+
+        # Remediation panel
+        if [[ "$has_remediation" == "true" ]]; then
+            cat >> "$output_file" <<EOF
+                    <tr class="remediation-row" data-severity="${severity}" data-category="${category}">
+                        <td colspan="4" class="px-4 py-0">
+EOF
+            generate_remediation_panel "$finding_id" "$remediation_data" >> "$output_file"
+            cat >> "$output_file" <<EOF
+                        </td>
+                    </tr>
+EOF
+        fi
+
+        ((finding_idx++))
+    done
+
+    # Tablo ve section kapanışı + System Info + Footer
+    cat >> "$output_file" <<EOF
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- System Info -->
+    <section class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-8">
+        <h2 class="text-lg font-semibold text-white mb-4">Sistem Bilgileri</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <span class="block text-xs text-gray-500 uppercase tracking-wide mb-1">İşletim Sistemi</span>
+                <span class="text-gray-200">$(grep -oP '(?<=^PRETTY_NAME=").*(?="$)' /etc/os-release 2>/dev/null || echo 'Ubuntu')</span>
+            </div>
+            <div>
+                <span class="block text-xs text-gray-500 uppercase tracking-wide mb-1">Kernel</span>
+                <span class="text-gray-200">$(uname -r)</span>
+            </div>
+            <div>
+                <span class="block text-xs text-gray-500 uppercase tracking-wide mb-1">Mimari</span>
+                <span class="text-gray-200">$(uname -m)</span>
+            </div>
+            <div>
+                <span class="block text-xs text-gray-500 uppercase tracking-wide mb-1">Hostname</span>
+                <span class="text-gray-200">$(hostname)</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-700 pt-6">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div class="text-center md:text-left">
+                <p class="text-gray-400 text-sm font-medium">Security Scanner v${SCANNER_VERSION:-0.1.0}</p>
+                <p class="text-gray-600 text-xs mt-1">Tarama ID: ${SCAN_ID:-unknown} | $(date '+%d.%m.%Y %H:%M')</p>
+            </div>
+            <div class="text-center md:text-right">
+                <p class="text-gray-500 text-xs">Bu rapor otomatik olarak oluşturulmuştur.</p>
+                <p class="text-gray-600 text-xs mt-1">Çözüm adımları uygulanmadan önce yedek alınması önerilir.</p>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<!-- Remediation Modal -->
+<div id="remediation-modal" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop -->
+    <div class="modal-backdrop absolute inset-0 bg-black/70" onclick="SecurityReport.closeModal()"></div>
+
+    <!-- Modal Content -->
+    <div class="modal-content absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-gray-700">
+            <div class="flex items-center gap-3">
+                <span id="modal-severity-icon"></span>
+                <h3 id="modal-title" class="text-lg font-semibold text-white"></h3>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="modal-severity-badge" class="px-2 py-1 text-xs font-medium rounded"></span>
+                <button onclick="SecurityReport.closeModal()" class="text-gray-400 hover:text-white transition-colors p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-6">
+            <!-- Açıklama -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-400 uppercase mb-2">Açıklama</h4>
+                <p id="modal-description" class="text-gray-300"></p>
+            </div>
+
+            <!-- Etkilenen -->
+            <div id="modal-affected-section">
+                <h4 class="text-sm font-medium text-gray-400 uppercase mb-2">Etkilenen</h4>
+                <code id="modal-affected" class="block bg-gray-900 px-3 py-2 rounded text-blue-400 font-mono text-sm"></code>
+            </div>
+
+            <!-- Çözüm Adımları -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-400 uppercase mb-2">Çözüm Adımları</h4>
+                <pre id="modal-remediation" class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-gray-300 whitespace-pre-wrap overflow-x-auto"></pre>
+                <button id="modal-copy-btn" onclick="SecurityReport.copyRemediation()" class="mt-3 px-4 py-2 bg-gray-700 hover:bg-blue-600 rounded text-sm text-gray-300 hover:text-white transition-colors inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                    </svg>
+                    <span>Kopyala</span>
+                </button>
+            </div>
+
+            <!-- Uyarı -->
+            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <p class="text-yellow-200 text-sm">Değişiklik yapmadan önce sisteminizin yedeğini almanız önerilir.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+EOF
+
+    # JavaScript inline
+    inline_js >> "$output_file"
+
+    cat >> "$output_file" <<'HTMLFOOT'
+</script>
+</body>
+</html>
+HTMLFOOT
+
+    log_info "HTML raporu oluşturuldu: $output_file"
+    echo -e "  ${GREEN}HTML raporu:${NC} $output_file"
+}
